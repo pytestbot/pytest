@@ -1250,19 +1250,25 @@ def _idval(
         if hook_id:
             return hook_id
 
+    modified_val = None  # empty strings are valid as val
     if isinstance(val, STRING_TYPES):
-        return _ascii_escaped_by_config(val, config)
+        modified_val = _ascii_escaped_by_config(val, config)
     elif val is None or isinstance(val, (float, int, bool)):
-        return str(val)
+        modified_val = str(val)
     elif isinstance(val, REGEX_TYPE):
-        return ascii_escaped(val.pattern)
+        modified_val = ascii_escaped(val.pattern)
     elif isinstance(val, enum.Enum):
-        return str(val)
+        modified_val = str(val)
     elif isinstance(getattr(val, "__name__", None), str):
         # name of a class, function, module, etc.
-        name = getattr(val, "__name__")  # type: str
-        return name
-    return str(argname) + str(idx)
+        modified_val = getattr(val, "__name__")
+
+    # val does not always enter the isinstance checks due to its type
+    # when it does we will check the string length returned and use auto generation of ids when over 100 chars
+    # on types which do not match isinstance checks pytest uses auto generate of ids automatically anyway
+    if modified_val is None or len(modified_val) > 100:
+        return str(argname) + str(idx)
+    return modified_val
 
 
 def _idvalset(

@@ -294,9 +294,8 @@ class TestMetafunc:
             ("ação", "a\\xe7\\xe3o"),
             ("josé@blah.com", "jos\\xe9@blah.com"),
             (
-                "δοκ.ιμή@παράδειγμα.δοκιμή",
-                "\\u03b4\\u03bf\\u03ba.\\u03b9\\u03bc\\u03ae@\\u03c0\\u03b1\\u03c1\\u03ac\\u03b4\\u03b5\\u03b9\\u03b3"
-                "\\u03bc\\u03b1.\\u03b4\\u03bf\\u03ba\\u03b9\\u03bc\\u03ae",
+                "δοκ.ιμή@δοκιμή",
+                "\\u03b4\\u03bf\\u03ba.\\u03b9\\u03bc\\u03ae@\\u03b4\\u03bf\\u03ba\\u03b9\\u03bc\\u03ae",
             ),
         ]
         for val, expected in values:
@@ -1885,3 +1884,38 @@ class TestMarkersWithParametrization:
                 "*= 6 passed in *",
             ]
         )
+
+
+def test_auto_generated_long_parametrized_ids(testdir):
+    testdir.makepyfile(
+        """
+    import pytest
+    from datetime import datetime
+    from enum import Enum
+
+    class CustomEnum(Enum):
+        OVER = "over" * 26
+        UNDER = "under" * 2
+
+    @pytest.mark.parametrize(
+    "value, expected",
+    [
+        ("*" * 101, True),
+        (b"*" * 101, True),
+        (25, False),
+        (50.25, False),
+        ("*" * 50, False),
+        (True, False),
+        (datetime(2001, 12, 12), True),
+        (CustomEnum.OVER, False),
+        (datetime, False),
+        (dir, False),
+    ])
+    def test_parametrized_auto_generating_long(request, value, expected):
+        node_name = request.node.name
+        was_rewritten = "value" in node_name
+        assert was_rewritten == expected
+    """
+    )
+    result = testdir.runpytest()
+    result.assert_outcomes(passed=10)
