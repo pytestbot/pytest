@@ -268,9 +268,7 @@ def maybe_delete_a_numbered_dir(path: Path) -> None:
     lock_path = None
     try:
         lock_path = create_cleanup_lock(path)
-        with tempfile.TemporaryDirectory(
-            prefix="garbage-", dir=path.parent
-        ) as garbage:
+        with tempfile.TemporaryDirectory(prefix="garbage-", dir=path.parent) as garbage:
             path.replace(garbage)
     except OSError:
         #  known races:
