@@ -47,7 +47,7 @@ There are several limitations and difficulties with this approach:
 2. parametrizing the "db" resource is not straight forward:
    you need to apply a "parametrize" decorator or implement a
    :py:func:`~hookspec.pytest_generate_tests` hook
-   calling :py:func:`~python.Metafunc.parametrize` which
+   calling :py:func:`~pytest.Metafunc.parametrize` which
    performs parametrization at the places where the resource
    is used.  Moreover, you need to modify the factory to use an
    ``extrakey`` parameter containing ``request.param`` to the
@@ -113,7 +113,7 @@ This new way of parametrizing funcarg factories should in many cases
 allow to re-use already written factories because effectively
 ``request.param`` was already used when test functions/classes were
 parametrized via
-:py:func:`metafunc.parametrize(indirect=True) <_pytest.python.Metafunc.parametrize>` calls.
+:py:func:`metafunc.parametrize(indirect=True) <pytest.Metafunc.parametrize>` calls.
 
 Of course it's perfectly fine to combine parametrization and scoping:
 
@@ -168,7 +168,7 @@ pytest for a long time offered a pytest_configure and a pytest_sessionstart
 hook which are often used to setup global resources.  This suffers from
 several problems:
 
-1. in distributed testing the master process would setup test resources
+1. in distributed testing the managing process would setup test resources
    that are never needed because it only co-ordinates the test run
    activities of the worker processes.
 

@@ -1,0 +1,1 @@
+Internal Restructure: let ``python.PyObjMixin`` inherit from ``nodes.Node`` to carry over typing information.

@@ -1,0 +1,1 @@
+Improve error message when :func:`pytest.skip` is used at module level without passing `allow_module_level=True`.

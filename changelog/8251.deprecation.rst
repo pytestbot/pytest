@@ -1,0 +1,1 @@
+Deprecate ``Node.fspath`` as we plan to move off `py.path.local <https://py.readthedocs.io/en/latest/path.html>`__ and switch to :mod:``pathlib``.

@@ -1,0 +1,1 @@
+``-c <config file>`` now also properly defines ``rootdir`` as the directory that contains ``<config file>``.

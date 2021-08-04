@@ -3,6 +3,8 @@ from typing import List
 from typing import Union
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from _pytest.pytester import Pytester
 
 
 class TestPasteCapture:
@@ -13,11 +15,11 @@ class TestPasteCapture:
         monkeypatch.setattr(plugin, "create_new_paste", pastebinlist.append)
         return pastebinlist
 
-    def test_failed(self, testdir, pastebinlist):
-        testpath = testdir.makepyfile(
+    def test_failed(self, pytester: Pytester, pastebinlist) -> None:
+        testpath = pytester.makepyfile(
             """
             import pytest
-            def test_pass():
+            def test_pass() -> None:
                 pass
             def test_fail():
                 assert 0
@@ -25,16 +27,16 @@ class TestPasteCapture:
                 pytest.skip("")
         """
         )
-        reprec = testdir.inline_run(testpath, "--pastebin=failed")
+        reprec = pytester.inline_run(testpath, "--pastebin=failed")
         assert len(pastebinlist) == 1
         s = pastebinlist[0]
         assert s.find("def test_fail") != -1
         assert reprec.countoutcomes() == [1, 1, 1]
 
-    def test_all(self, testdir, pastebinlist):
+    def test_all(self, pytester: Pytester, pastebinlist) -> None:
         from _pytest.pytester import LineMatcher
 
-        testpath = testdir.makepyfile(
+        testpath = pytester.makepyfile(
             """
             import pytest
             def test_pass():
@@ -45,7 +47,7 @@ class TestPasteCapture:
                 pytest.skip("")
         """
         )
-        reprec = testdir.inline_run(testpath, "--pastebin=all", "-v")
+        reprec = pytester.inline_run(testpath, "--pastebin=all", "-v")
         assert reprec.countoutcomes() == [1, 1, 1]
         assert len(pastebinlist) == 1
         contents = pastebinlist[0].decode("utf-8")
@@ -59,17 +61,17 @@ class TestPasteCapture:
             ]
         )
 
-    def test_non_ascii_paste_text(self, testdir, pastebinlist):
+    def test_non_ascii_paste_text(self, pytester: Pytester, pastebinlist) -> None:
         """Make sure that text which contains non-ascii characters is pasted
         correctly. See #1219.
         """
-        testdir.makepyfile(
+        pytester.makepyfile(
             test_unicode="""\
             def test():
                 assert '☺' == 1
             """
         )
-        result = testdir.runpytest("--pastebin=all")
+        result = pytester.runpytest("--pastebin=all")
         expected_msg = "*assert '☺' == 1*"
         result.stdout.fnmatch_lines(
             [
@@ -87,7 +89,7 @@ class TestPaste:
         return request.config.pluginmanager.getplugin("pastebin")
 
     @pytest.fixture
-    def mocked_urlopen_fail(self, monkeypatch):
+    def mocked_urlopen_fail(self, monkeypatch: MonkeyPatch):
         """Monkeypatch the actual urlopen call to emulate a HTTP Error 400."""
         calls = []
 
@@ -102,7 +104,7 @@ class TestPaste:
         return calls
 
     @pytest.fixture
-    def mocked_urlopen_invalid(self, monkeypatch):
+    def mocked_urlopen_invalid(self, monkeypatch: MonkeyPatch):
         """Monkeypatch the actual urlopen calls done by the internal plugin
         function that connects to bpaste service, but return a url in an
         unexpected format."""
@@ -124,7 +126,7 @@ class TestPaste:
         return calls
 
     @pytest.fixture
-    def mocked_urlopen(self, monkeypatch):
+    def mocked_urlopen(self, monkeypatch: MonkeyPatch):
         """Monkeypatch the actual urlopen calls done by the internal plugin
         function that connects to bpaste service."""
         calls = []
@@ -144,7 +146,7 @@ class TestPaste:
         monkeypatch.setattr(urllib.request, "urlopen", mocked)
         return calls
 
-    def test_pastebin_invalid_url(self, pastebin, mocked_urlopen_invalid):
+    def test_pastebin_invalid_url(self, pastebin, mocked_urlopen_invalid) -> None:
         result = pastebin.create_new_paste(b"full-paste-contents")
         assert (
             result
@@ -152,12 +154,12 @@ class TestPaste:
         )
         assert len(mocked_urlopen_invalid) == 1
 
-    def test_pastebin_http_error(self, pastebin, mocked_urlopen_fail):
+    def test_pastebin_http_error(self, pastebin, mocked_urlopen_fail) -> None:
         result = pastebin.create_new_paste(b"full-paste-contents")
         assert result == "bad response: HTTP Error 400: Bad request"
         assert len(mocked_urlopen_fail) == 1
 
-    def test_create_new_paste(self, pastebin, mocked_urlopen):
+    def test_create_new_paste(self, pastebin, mocked_urlopen) -> None:
         result = pastebin.create_new_paste(b"full-paste-contents")
         assert result == "https://bpaste.net/show/3c0c6750bd"
         assert len(mocked_urlopen) == 1
@@ -169,7 +171,7 @@ class TestPaste:
         assert "code=full-paste-contents" in data.decode()
         assert "expiry=1week" in data.decode()
 
-    def test_create_new_paste_failure(self, pastebin, monkeypatch):
+    def test_create_new_paste_failure(self, pastebin, monkeypatch: MonkeyPatch) -> None:
         import io
         import urllib.request
 

@@ -3,6 +3,7 @@ import os
 import platform
 import sys
 import traceback
+from collections.abc import Mapping
 from typing import Generator
 from typing import Optional
 from typing import Tuple
@@ -20,7 +21,7 @@ from _pytest.outcomes import skip
 from _pytest.outcomes import xfail
 from _pytest.reports import BaseReport
 from _pytest.runner import CallInfo
-from _pytest.store import StoreKey
+from _pytest.stash import StashKey
 
 
 def pytest_addoption(parser: Parser) -> None:
@@ -67,7 +68,7 @@ def pytest_configure(config: Config) -> None:
         "skipif(condition, ..., *, reason=...): "
         "skip the given test function if any of the conditions evaluate to True. "
         "Example: skipif(sys.platform == 'win32') skips the test if we are on the win32 platform. "
-        "See https://docs.pytest.org/en/stable/reference.html#pytest-mark-skipif",
+        "See https://docs.pytest.org/en/stable/reference/reference.html#pytest-mark-skipif",
     )
     config.addinivalue_line(
         "markers",
@@ -77,7 +78,7 @@ def pytest_configure(config: Config) -> None:
         "and run=False if you don't even want to execute the test function. "
         "If only specific exception(s) are expected, you can list them in "
         "raises, and if the test fails in other ways, it will be reported as "
-        "a true failure. See https://docs.pytest.org/en/stable/reference.html#pytest-mark-xfail",
+        "a true failure. See https://docs.pytest.org/en/stable/reference/reference.html#pytest-mark-xfail",
     )
 
 
@@ -98,6 +99,16 @@ def evaluate_condition(item: Item, mark: Mark, condition: object) -> Tuple[bool,
             "platform": platform,
             "config": item.config,
         }
+        for dictionary in reversed(
+            item.ihook.pytest_markeval_namespace(config=item.config)
+        ):
+            if not isinstance(dictionary, Mapping):
+                raise ValueError(
+                    "pytest_markeval_namespace() needs to return a dict, got {!r}".format(
+                        dictionary
+                    )
+                )
+            globals_.update(dictionary)
         if hasattr(item, "obj"):
             globals_.update(item.obj.__globals__)  # type: ignore[attr-defined]
         try:
@@ -150,7 +161,7 @@ def evaluate_condition(item: Item, mark: Mark, condition: object) -> Tuple[bool,
 class Skip:
     """The result of evaluate_skip_marks()."""
 
-    reason = attr.ib(type=str)
+    reason = attr.ib(type=str, default="unconditional skip")
 
 
 def evaluate_skip_marks(item: Item) -> Optional[Skip]:
@@ -173,13 +184,10 @@ def evaluate_skip_marks(item: Item) -> Optional[Skip]:
                 return Skip(reason)
 
     for mark in item.iter_markers(name="skip"):
-        if "reason" in mark.kwargs:
-            reason = mark.kwargs["reason"]
-        elif mark.args:
-            reason = mark.args[0]
-        else:
-            reason = "unconditional skip"
-        return Skip(reason)
+        try:
+            return Skip(*mark.args, **mark.kwargs)
+        except TypeError as e:
+            raise TypeError(str(e) + " - maybe you meant pytest.mark.skipif?") from None
 
     return None
 
@@ -219,30 +227,26 @@ def evaluate_xfail_marks(item: Item) -> Optional[Xfail]:
     return None
 
 
-# Whether skipped due to skip or skipif marks.
-skipped_by_mark_key = StoreKey[bool]()
 # Saves the xfail mark evaluation. Can be refreshed during call if None.
-xfailed_key = StoreKey[Optional[Xfail]]()
-unexpectedsuccess_key = StoreKey[str]()
+xfailed_key = StashKey[Optional[Xfail]]()
 
 
 @hookimpl(tryfirst=True)
 def pytest_runtest_setup(item: Item) -> None:
     skipped = evaluate_skip_marks(item)
-    item._store[skipped_by_mark_key] = skipped is not None
     if skipped:
-        skip(skipped.reason)
+        raise skip.Exception(skipped.reason, _use_item_location=True)
 
-    item._store[xfailed_key] = xfailed = evaluate_xfail_marks(item)
+    item.stash[xfailed_key] = xfailed = evaluate_xfail_marks(item)
     if xfailed and not item.config.option.runxfail and not xfailed.run:
         xfail("[NOTRUN] " + xfailed.reason)
 
 
 @hookimpl(hookwrapper=True)
 def pytest_runtest_call(item: Item) -> Generator[None, None, None]:
-    xfailed = item._store.get(xfailed_key, None)
+    xfailed = item.stash.get(xfailed_key, None)
     if xfailed is None:
-        item._store[xfailed_key] = xfailed = evaluate_xfail_marks(item)
+        item.stash[xfailed_key] = xfailed = evaluate_xfail_marks(item)
 
     if xfailed and not item.config.option.runxfail and not xfailed.run:
         xfail("[NOTRUN] " + xfailed.reason)
@@ -250,25 +254,17 @@ def pytest_runtest_call(item: Item) -> Generator[None, None, None]:
     yield
 
     # The test run may have added an xfail mark dynamically.
-    xfailed = item._store.get(xfailed_key, None)
+    xfailed = item.stash.get(xfailed_key, None)
     if xfailed is None:
-        item._store[xfailed_key] = xfailed = evaluate_xfail_marks(item)
+        item.stash[xfailed_key] = xfailed = evaluate_xfail_marks(item)
 
 
 @hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
     outcome = yield
     rep = outcome.get_result()
-    xfailed = item._store.get(xfailed_key, None)
-    # unittest special case, see setting of unexpectedsuccess_key
-    if unexpectedsuccess_key in item._store and rep.when == "call":
-        reason = item._store[unexpectedsuccess_key]
-        if reason:
-            rep.longrepr = f"Unexpected success: {reason}"
-        else:
-            rep.longrepr = "Unexpected success"
-        rep.outcome = "failed"
-    elif item.config.option.runxfail:
+    xfailed = item.stash.get(xfailed_key, None)
+    if item.config.option.runxfail:
         pass  # don't interfere
     elif call.excinfo and isinstance(call.excinfo.value, xfail.Exception):
         assert call.excinfo.value.msg is not None
@@ -289,19 +285,6 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):
             else:
                 rep.outcome = "passed"
                 rep.wasxfail = xfailed.reason
-
-    if (
-        item._store.get(skipped_by_mark_key, True)
-        and rep.skipped
-        and type(rep.longrepr) is tuple
-    ):
-        # Skipped by mark.skipif; change the location of the failure
-        # to point to the item definition, otherwise it will display
-        # the location of where the skip exception was raised within pytest.
-        _, _, reason = rep.longrepr
-        filename, line = item.reportinfo()[:2]
-        assert line is not None
-        rep.longrepr = str(filename), line + 1, reason
 
 
 def pytest_report_teststatus(report: BaseReport) -> Optional[Tuple[str, str, str]]:

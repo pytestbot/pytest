@@ -6,8 +6,8 @@ class MyFile(pytest.File):
         return [MyItem.from_parent(name="hello", parent=self)]
 
 
-def pytest_collect_file(path, parent):
-    return MyFile.from_parent(fspath=path, parent=parent)
+def pytest_collect_file(fspath, parent):
+    return MyFile.from_parent(path=fspath, parent=parent)
 
 
 class MyItem(pytest.Item):

@@ -3,7 +3,8 @@ import sys
 from typing import List
 
 import pytest
-from _pytest.pytester import Testdir
+from _pytest.monkeypatch import MonkeyPatch
+from _pytest.pytester import Pytester
 
 if sys.gettrace():
 
@@ -41,7 +42,7 @@ def pytest_collection_modifyitems(items):
             # (https://github.com/pytest-dev/pytest/issues/5070)
             neutral_items.append(item)
         else:
-            if "testdir" in fixtures:
+            if "pytester" in fixtures:
                 co_names = item.function.__code__.co_names
                 if spawn_names.intersection(co_names):
                     item.add_marker(pytest.mark.uses_pexpect)
@@ -103,36 +104,36 @@ def tw_mock():
 
 
 @pytest.fixture
-def dummy_yaml_custom_test(testdir):
+def dummy_yaml_custom_test(pytester: Pytester):
     """Writes a conftest file that collects and executes a dummy yaml test.
 
     Taken from the docs, but stripped down to the bare minimum, useful for
     tests which needs custom items collected.
     """
-    testdir.makeconftest(
+    pytester.makeconftest(
         """
         import pytest
 
-        def pytest_collect_file(parent, path):
-            if path.ext == ".yaml" and path.basename.startswith("test"):
-                return YamlFile.from_parent(fspath=path, parent=parent)
+        def pytest_collect_file(parent, fspath):
+            if fspath.suffix == ".yaml" and fspath.name.startswith("test"):
+                return YamlFile.from_parent(path=fspath, parent=parent)
 
         class YamlFile(pytest.File):
             def collect(self):
-                yield YamlItem.from_parent(name=self.fspath.basename, parent=self)
+                yield YamlItem.from_parent(name=self.path.name, parent=self)
 
         class YamlItem(pytest.Item):
             def runtest(self):
                 pass
     """
     )
-    testdir.makefile(".yaml", test1="")
+    pytester.makefile(".yaml", test1="")
 
 
 @pytest.fixture
-def testdir(testdir: Testdir) -> Testdir:
-    testdir.monkeypatch.setenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
-    return testdir
+def pytester(pytester: Pytester, monkeypatch: MonkeyPatch) -> Pytester:
+    monkeypatch.setenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "1")
+    return pytester
 
 
 @pytest.fixture(scope="session")
@@ -178,7 +179,7 @@ def color_mapping():
 
 
 @pytest.fixture
-def mock_timing(monkeypatch):
+def mock_timing(monkeypatch: MonkeyPatch):
     """Mocks _pytest.timing with a known object that can be used to control timing in tests
     deterministically.
 

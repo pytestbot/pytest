@@ -1,0 +1,5 @@
+Several behaviors of :meth:`Parser.addoption <pytest.Parser.addoption>` are now
+scheduled for removal in pytest 8 (deprecated since pytest 2.4.0):
+
+- ``parser.addoption(..., help=".. %default ..")`` - use ``%(default)s`` instead.
+- ``parser.addoption(..., type="int/string/float/complex")`` - use ``type=int`` etc. instead.

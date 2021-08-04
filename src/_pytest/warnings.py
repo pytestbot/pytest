@@ -21,7 +21,7 @@ def pytest_configure(config: Config) -> None:
     config.addinivalue_line(
         "markers",
         "filterwarnings(warning): add a warning filter to the given test. "
-        "see https://docs.pytest.org/en/stable/warnings.html#pytest-mark-filterwarnings ",
+        "see https://docs.pytest.org/en/stable/how-to/capture-warnings.html#pytest-mark-filterwarnings ",
     )
 
 

@@ -1,0 +1,1 @@
+Fixed an issue where illegal directory characters derived from ``getpass.getuser()`` raised an ``OSError``.

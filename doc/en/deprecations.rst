@@ -19,6 +19,107 @@ Below is a complete list of all pytest features which are considered deprecated.
 :class:`PytestWarning` or subclasses, which can be filtered using :ref:`standard warning filters <warnings>`.
 
 
+``py.path.local`` arguments for hooks replaced with ``pathlib.Path``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to support the transition to :mod:`pathlib`, the following hooks now receive additional arguments:
+
+*  :func:`pytest_ignore_collect(fspath: pathlib.Path) <_pytest.hookspec.pytest_ignore_collect>`
+*  :func:`pytest_collect_file(fspath: pathlib.Path) <_pytest.hookspec.pytest_collect_file>`
+*  :func:`pytest_pycollect_makemodule(fspath: pathlib.Path) <_pytest.hookspec.pytest_pycollect_makemodule>`
+*  :func:`pytest_report_header(startpath: pathlib.Path) <_pytest.hookspec.pytest_report_header>`
+*  :func:`pytest_report_collectionfinish(startpath: pathlib.Path) <_pytest.hookspec.pytest_report_collectionfinish>`
+
+The accompanying ``py.path.local`` based paths have been deprecated: plugins which manually invoke those hooks should only pass the new ``pathlib.Path`` arguments, and users should change their hook implementations to use the new ``pathlib.Path`` arguments.
+
+
+Implementing the ``pytest_cmdline_preparse`` hook
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 7.0
+
+Implementing the :func:`pytest_cmdline_preparse <_pytest.hookspec.pytest_cmdline_preparse>` hook has been officially deprecated.
+Implement the :func:`pytest_load_initial_conftests <_pytest.hookspec.pytest_load_initial_conftests>` hook instead.
+
+.. code-block:: python
+
+    def pytest_cmdline_preparse(config: Config, args: List[str]) -> None:
+        ...
+
+
+    # becomes:
+
+
+    def pytest_load_initial_conftests(
+        early_config: Config, parser: Parser, args: List[str]
+    ) -> None:
+        ...
+
+
+Diamond inheritance between :class:`pytest.File` and :class:`pytest.Item`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 6.3
+
+Inheriting from both Item and file at once has never been supported officially,
+however some plugins providing linting/code analysis have been using this as a hack.
+
+This practice is now officially deprecated and a common way to fix this is `example pr fixing inheritance`_.
+
+
+
+.. _example pr fixing inheritance: https://github.com/asmeurer/pytest-flakes/pull/40/files
+
+
+Backward compatibilities in ``Parser.addoption``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 2.4
+
+Several behaviors of :meth:`Parser.addoption <pytest.Parser.addoption>` are now
+scheduled for removal in pytest 7 (deprecated since pytest 2.4.0):
+
+- ``parser.addoption(..., help=".. %default ..")`` - use ``%(default)s`` instead.
+- ``parser.addoption(..., type="int/string/float/complex")`` - use ``type=int`` etc. instead.
+
+
+Raising ``unittest.SkipTest`` during collection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 6.3
+
+Raising :class:`unittest.SkipTest` to skip collection of tests during the
+pytest collection phase is deprecated. Use :func:`pytest.skip` instead.
+
+Note: This deprecation only relates to using `unittest.SkipTest` during test
+collection. You are probably not doing that. Ordinary usage of
+:class:`unittest.SkipTest` / :meth:`unittest.TestCase.skipTest` /
+:func:`unittest.skip` in unittest test cases is fully supported.
+
+
+The ``--strict`` command-line option
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 6.2
+
+The ``--strict`` command-line option has been deprecated in favor of ``--strict-markers``, which
+better conveys what the option does.
+
+We have plans to maybe in the future to reintroduce ``--strict`` and make it an encompassing
+flag for all strictness related options (``--strict-markers`` and ``--strict-config``
+at the moment, more might be introduced in the future).
+
+
+The ``yield_fixture`` function/decorator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. deprecated:: 6.2
+
+``pytest.yield_fixture`` is a deprecated alias for :func:`pytest.fixture`.
+
+It has been so for a very long time, so can be search/replaced safely.
+
+
 The ``pytest_warning_captured`` hook
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -375,8 +476,8 @@ Metafunc.addcall
 
 .. versionremoved:: 4.0
 
-``_pytest.python.Metafunc.addcall`` was a precursor to the current parametrized mechanism. Users should use
-:meth:`_pytest.python.Metafunc.parametrize` instead.
+``Metafunc.addcall`` was a precursor to the current parametrized mechanism. Users should use
+:meth:`pytest.Metafunc.parametrize` instead.
 
 Example:
 

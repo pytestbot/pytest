@@ -1,0 +1,3 @@
+``testdir.makefile`` now silently accepts values which don't start with ``.`` to maintain backward compatibility with older pytest versions.
+
+``pytester.makefile`` now issues a clearer error if the ``.`` is missing in the ``ext`` argument.

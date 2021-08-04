@@ -1,0 +1,5 @@
+Fixed issue where :meth:`unittest.TestCase.setUpClass` is not called when a test has `/` in its name since pytest 6.2.0.
+
+This refers to the path part in pytest node IDs, e.g. ``TestClass::test_it`` in the node ID ``tests/test_file.py::TestClass::test_it``.
+
+Now, instead of assuming that the test name does not contain ``/``, it is assumed that test path does not contain ``::``. We plan to hopefully make both of these work in the future.

@@ -1,5 +1,0 @@
-New :fixture:`pytester` fixture, which is identical to :fixture:`testdir` but its methods return :class:`pathlib.Path` when appropriate instead of ``py.path.local``.
-
-This is part of the movement to use :class:`pathlib.Path` objects internally, in order to remove the dependency to ``py`` in the future.
-
-Internally, the old :class:`Testdir` is now a thin wrapper around :class:`Pytester`, preserving the old interface.

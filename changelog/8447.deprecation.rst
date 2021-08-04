@@ -1,0 +1,4 @@
+Defining a custom pytest node type which is both an :class:`pytest.Item <Item>` and a :class:`pytest.Collector <Collector>` now issues a warning.
+It was never sanely supported and triggers hard to debug errors.
+
+Instead, a separate collector node should be used, which collects the item. See :ref:`non-python tests` for an example.

@@ -1,0 +1,19 @@
+The types of objects used in pytest's API are now exported so they may be used in type annotations.
+
+The newly-exported types are:
+
+- ``pytest.Config`` for :class:`Config <pytest.Config>`.
+- ``pytest.Mark`` for :class:`marks <pytest.Mark>`.
+- ``pytest.MarkDecorator`` for :class:`mark decorators <pytest.MarkDecorator>`.
+- ``pytest.MarkGenerator`` for the :class:`pytest.mark <pytest.MarkGenerator>` singleton.
+- ``pytest.Metafunc`` for the :class:`metafunc <pytest.MarkGenerator>` argument to the :func:`pytest_generate_tests <pytest.hookspec.pytest_generate_tests>` hook.
+- ``pytest.CallInfo`` for the :class:`CallInfo <pytest.CallInfo>` type passed to various hooks.
+- ``pytest.PytestPluginManager`` for :class:`PytestPluginManager <pytest.PytestPluginManager>`.
+- ``pytest.ExceptionInfo`` for the :class:`ExceptionInfo <pytest.ExceptionInfo>` type returned from :func:`pytest.raises` and passed to various hooks.
+- ``pytest.Parser`` for the :class:`Parser <pytest.Parser>` type passed to the :func:`pytest_addoption <pytest.hookspec.pytest_addoption>` hook.
+- ``pytest.OptionGroup`` for the :class:`OptionGroup <pytest.OptionGroup>` type returned from the :func:`parser.addgroup <pytest.Parser.getgroup>` method.
+
+Constructing them directly is not supported; they are only meant for use in type annotations.
+Doing so will emit a deprecation warning, and may become a hard-error in pytest 8.0.
+
+Subclassing them is also not supported. This is not currently enforced at runtime, but is detected by type-checkers such as mypy.

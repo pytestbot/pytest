@@ -20,7 +20,7 @@ def announce(version):
     stdout = check_output(["git", "log", f"{last_version}..HEAD", "--format=%aN"])
     stdout = stdout.decode("utf-8")
 
-    contributors = set(stdout.splitlines())
+    contributors = {name for name in stdout.splitlines() if not name.endswith("[bot]")}
 
     template_name = (
         "release.minor.rst" if version.endswith(".0") else "release.patch.rst"
@@ -100,10 +100,7 @@ def pre_release(version, *, skip_check_links):
 
 
 def changelog(version, write_out=False):
-    if write_out:
-        addopts = []
-    else:
-        addopts = ["--draft"]
+    addopts = [] if write_out else ["--draft"]
     check_call(["towncrier", "--yes", "--version", version] + addopts)
 
 

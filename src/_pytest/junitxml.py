@@ -30,11 +30,11 @@ from _pytest.config import filename_arg
 from _pytest.config.argparsing import Parser
 from _pytest.fixtures import FixtureRequest
 from _pytest.reports import TestReport
-from _pytest.store import StoreKey
+from _pytest.stash import StashKey
 from _pytest.terminal import TerminalReporter
 
 
-xml_key = StoreKey["LogXML"]()
+xml_key = StashKey["LogXML"]()
 
 
 def bin_xml_escape(arg: object) -> str:
@@ -267,7 +267,7 @@ def _warn_incompatibility_with_xunit2(
     """Emit a PytestWarning about the given fixture being incompatible with newer xunit revisions."""
     from _pytest.warning_types import PytestWarning
 
-    xml = request.config._store.get(xml_key, None)
+    xml = request.config.stash.get(xml_key, None)
     if xml is not None and xml.family not in ("xunit1", "legacy"):
         request.node.warn(
             PytestWarning(
@@ -322,7 +322,7 @@ def record_xml_attribute(request: FixtureRequest) -> Callable[[str, object], Non
 
     attr_func = add_attr_noop
 
-    xml = request.config._store.get(xml_key, None)
+    xml = request.config.stash.get(xml_key, None)
     if xml is not None:
         node_reporter = xml.node_reporter(request.node.nodeid)
         attr_func = node_reporter.add_attribute
@@ -370,7 +370,7 @@ def record_testsuite_property(request: FixtureRequest) -> Callable[[str, object]
         __tracebackhide__ = True
         _check_record_param_type("name", name)
 
-    xml = request.config._store.get(xml_key, None)
+    xml = request.config.stash.get(xml_key, None)
     if xml is not None:
         record_func = xml.add_global_property  # noqa
     return record_func
@@ -428,7 +428,7 @@ def pytest_configure(config: Config) -> None:
     # Prevent opening xmllog on worker nodes (xdist).
     if xmlpath and not hasattr(config, "workerinput"):
         junit_family = config.getini("junit_family")
-        config._store[xml_key] = LogXML(
+        config.stash[xml_key] = LogXML(
             xmlpath,
             config.option.junitprefix,
             config.getini("junit_suite_name"),
@@ -437,13 +437,13 @@ def pytest_configure(config: Config) -> None:
             junit_family,
             config.getini("junit_log_passing_tests"),
         )
-        config.pluginmanager.register(config._store[xml_key])
+        config.pluginmanager.register(config.stash[xml_key])
 
 
 def pytest_unconfigure(config: Config) -> None:
-    xml = config._store.get(xml_key, None)
+    xml = config.stash.get(xml_key, None)
     if xml:
-        del config._store[xml_key]
+        del config.stash[xml_key]
         config.pluginmanager.unregister(xml)
 
 
@@ -486,7 +486,7 @@ class LogXML:
         )
         self.node_reporters: Dict[
             Tuple[Union[str, TestReport], object], _NodeReporter
-        ] = ({})
+        ] = {}
         self.node_reporters_ordered: List[_NodeReporter] = []
         self.global_properties: List[Tuple[str, str]] = []
 
@@ -648,39 +648,39 @@ class LogXML:
         dirname = os.path.dirname(os.path.abspath(self.logfile))
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
-        logfile = open(self.logfile, "w", encoding="utf-8")
-        suite_stop_time = timing.time()
-        suite_time_delta = suite_stop_time - self.suite_start_time
 
-        numtests = (
-            self.stats["passed"]
-            + self.stats["failure"]
-            + self.stats["skipped"]
-            + self.stats["error"]
-            - self.cnt_double_fail_tests
-        )
-        logfile.write('<?xml version="1.0" encoding="utf-8"?>')
+        with open(self.logfile, "w", encoding="utf-8") as logfile:
+            suite_stop_time = timing.time()
+            suite_time_delta = suite_stop_time - self.suite_start_time
 
-        suite_node = ET.Element(
-            "testsuite",
-            name=self.suite_name,
-            errors=str(self.stats["error"]),
-            failures=str(self.stats["failure"]),
-            skipped=str(self.stats["skipped"]),
-            tests=str(numtests),
-            time="%.3f" % suite_time_delta,
-            timestamp=datetime.fromtimestamp(self.suite_start_time).isoformat(),
-            hostname=platform.node(),
-        )
-        global_properties = self._get_global_properties_node()
-        if global_properties is not None:
-            suite_node.append(global_properties)
-        for node_reporter in self.node_reporters_ordered:
-            suite_node.append(node_reporter.to_xml())
-        testsuites = ET.Element("testsuites")
-        testsuites.append(suite_node)
-        logfile.write(ET.tostring(testsuites, encoding="unicode"))
-        logfile.close()
+            numtests = (
+                self.stats["passed"]
+                + self.stats["failure"]
+                + self.stats["skipped"]
+                + self.stats["error"]
+                - self.cnt_double_fail_tests
+            )
+            logfile.write('<?xml version="1.0" encoding="utf-8"?>')
+
+            suite_node = ET.Element(
+                "testsuite",
+                name=self.suite_name,
+                errors=str(self.stats["error"]),
+                failures=str(self.stats["failure"]),
+                skipped=str(self.stats["skipped"]),
+                tests=str(numtests),
+                time="%.3f" % suite_time_delta,
+                timestamp=datetime.fromtimestamp(self.suite_start_time).isoformat(),
+                hostname=platform.node(),
+            )
+            global_properties = self._get_global_properties_node()
+            if global_properties is not None:
+                suite_node.append(global_properties)
+            for node_reporter in self.node_reporters_ordered:
+                suite_node.append(node_reporter.to_xml())
+            testsuites = ET.Element("testsuites")
+            testsuites.append(suite_node)
+            logfile.write(ET.tostring(testsuites, encoding="unicode"))
 
     def pytest_terminal_summary(self, terminalreporter: TerminalReporter) -> None:
         terminalreporter.write_sep("-", f"generated xml file: {self.logfile}")

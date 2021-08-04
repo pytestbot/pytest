@@ -1,0 +1,2 @@
+:class:`RunResult <_pytest.pytester.RunResult>` method :meth:`assert_outcomes <_pytest.pytester.RunResult.assert_outcomes>` now accepts a
+``warnings`` argument to assert the total number of warnings captured.

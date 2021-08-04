@@ -13,12 +13,13 @@ from _pytest.compat import is_generator
 from _pytest.compat import safe_getattr
 from _pytest.compat import safe_isclass
 from _pytest.outcomes import OutcomeException
+from _pytest.pytester import Pytester
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
 
 
-def test_is_generator():
+def test_is_generator() -> None:
     def zap():
         yield  # pragma: no cover
 
@@ -29,7 +30,7 @@ def test_is_generator():
     assert not is_generator(foo)
 
 
-def test_real_func_loop_limit():
+def test_real_func_loop_limit() -> None:
     class Evil:
         def __init__(self):
             self.left = 1000
@@ -55,7 +56,7 @@ def test_real_func_loop_limit():
         get_real_func(evil)
 
 
-def test_get_real_func():
+def test_get_real_func() -> None:
     """Check that get_real_func correctly unwraps decorators until reaching the real function"""
 
     def decorator(f):
@@ -80,7 +81,7 @@ def test_get_real_func():
     assert get_real_func(wrapped_func2) is wrapped_func
 
 
-def test_get_real_func_partial():
+def test_get_real_func_partial() -> None:
     """Test get_real_func handles partial instances correctly"""
 
     def foo(x):
@@ -90,8 +91,8 @@ def test_get_real_func_partial():
     assert get_real_func(partial(foo)) is foo
 
 
-def test_is_generator_asyncio(testdir):
-    testdir.makepyfile(
+def test_is_generator_asyncio(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         from _pytest.compat import is_generator
         import asyncio
@@ -105,12 +106,12 @@ def test_is_generator_asyncio(testdir):
     )
     # avoid importing asyncio into pytest's own process,
     # which in turn imports logging (#8)
-    result = testdir.runpytest_subprocess()
+    result = pytester.runpytest_subprocess()
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
-def test_is_generator_async_syntax(testdir):
-    testdir.makepyfile(
+def test_is_generator_async_syntax(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         from _pytest.compat import is_generator
         def test_is_generator_py35():
@@ -124,12 +125,12 @@ def test_is_generator_async_syntax(testdir):
             assert not is_generator(bar)
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
-def test_is_generator_async_gen_syntax(testdir):
-    testdir.makepyfile(
+def test_is_generator_async_gen_syntax(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         from _pytest.compat import is_generator
         def test_is_generator_py36():
@@ -144,7 +145,7 @@ def test_is_generator_async_gen_syntax(testdir):
             assert not is_generator(bar)
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
@@ -162,7 +163,7 @@ class ErrorsHelper:
         pytest.fail("fail should be catched")
 
 
-def test_helper_failures():
+def test_helper_failures() -> None:
     helper = ErrorsHelper()
     with pytest.raises(Exception):
         helper.raise_exception
@@ -170,7 +171,7 @@ def test_helper_failures():
         helper.raise_fail_outcome
 
 
-def test_safe_getattr():
+def test_safe_getattr() -> None:
     helper = ErrorsHelper()
     assert safe_getattr(helper, "raise_exception", "default") == "default"
     assert safe_getattr(helper, "raise_fail_outcome", "default") == "default"
@@ -178,7 +179,7 @@ def test_safe_getattr():
         assert safe_getattr(helper, "raise_baseexception", "default")
 
 
-def test_safe_isclass():
+def test_safe_isclass() -> None:
     assert safe_isclass(type) is True
 
     class CrappyClass(Exception):

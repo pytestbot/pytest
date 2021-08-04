@@ -1,1 +1,0 @@
-The ``attrs`` dependency requirement is now >=19.2.0 instead of >=17.4.0.

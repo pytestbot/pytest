@@ -6,7 +6,7 @@ Pytest API and builtin fixtures
 ================================================
 
 
-Most of the information of this page has been moved over to :ref:`reference`.
+Most of the information of this page has been moved over to :ref:`api-reference`.
 
 For information on plugin hooks and objects, see :ref:`plugins`.
 
@@ -61,7 +61,7 @@ For information about fixtures, see :ref:`fixtures`. To see a complete list of a
         namespace of doctests.
 
     pytestconfig [session scope]
-        Session-scoped fixture that returns the :class:`_pytest.config.Config` object.
+        Session-scoped fixture that returns the :class:`pytest.Config` object.
 
         Example::
 
@@ -132,7 +132,7 @@ For information about fixtures, see :ref:`fixtures`. To see a complete list of a
             monkeypatch.delattr(obj, name, raising=True)
             monkeypatch.setitem(mapping, name, value)
             monkeypatch.delitem(obj, name, raising=True)
-            monkeypatch.setenv(name, value, prepend=False)
+            monkeypatch.setenv(name, value, prepend=None)
             monkeypatch.delenv(name, raising=True)
             monkeypatch.syspath_prepend(path)
             monkeypatch.chdir(path)
@@ -144,19 +144,24 @@ For information about fixtures, see :ref:`fixtures`. To see a complete list of a
     recwarn
         Return a :class:`WarningsRecorder` instance that records all warnings emitted by test functions.
 
-        See http://docs.python.org/library/warnings.html for information
+        See https://docs.python.org/library/how-to/capture-warnings.html for information
         on warning categories.
 
     tmpdir_factory [session scope]
-        Return a :class:`_pytest.tmpdir.TempdirFactory` instance for the test session.
+        Return a :class:`pytest.TempdirFactory` instance for the test session.
 
     tmp_path_factory [session scope]
-        Return a :class:`_pytest.tmpdir.TempPathFactory` instance for the test session.
+        Return a :class:`pytest.TempPathFactory` instance for the test session.
 
     tmpdir
         Return a temporary directory path object which is unique to each test
         function invocation, created as a sub directory of the base temporary
         directory.
+
+        By default, a new base temporary directory is created each test session,
+        and old bases are removed after 3 sessions, to aid in debugging. If
+        ``--basetemp`` is used then it is cleared each session. See :ref:`base
+        temporary directory`.
 
         The returned object is a `py.path.local`_ path object.
 
@@ -166,6 +171,11 @@ For information about fixtures, see :ref:`fixtures`. To see a complete list of a
         Return a temporary directory path object which is unique to each test
         function invocation, created as a sub directory of the base temporary
         directory.
+
+        By default, a new base temporary directory is created each test session,
+        and old bases are removed after 3 sessions, to aid in debugging. If
+        ``--basetemp`` is used then it is cleared each session. See :ref:`base
+        temporary directory`.
 
         The returned object is a :class:`pathlib.Path` object.
 

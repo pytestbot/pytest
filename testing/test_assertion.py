@@ -1,3 +1,4 @@
+import collections
 import sys
 import textwrap
 from typing import Any
@@ -12,6 +13,7 @@ import pytest
 from _pytest import outcomes
 from _pytest.assertion import truncate
 from _pytest.assertion import util
+from _pytest.pytester import Pytester
 
 
 def mock_config(verbose=0):
@@ -27,9 +29,12 @@ def mock_config(verbose=0):
 class TestImportHookInstallation:
     @pytest.mark.parametrize("initial_conftest", [True, False])
     @pytest.mark.parametrize("mode", ["plain", "rewrite"])
-    def test_conftest_assertion_rewrite(self, testdir, initial_conftest, mode):
+    def test_conftest_assertion_rewrite(
+        self, pytester: Pytester, initial_conftest, mode
+    ) -> None:
         """Test that conftest files are using assertion rewrite on import (#1619)."""
-        testdir.tmpdir.join("foo/tests").ensure(dir=1)
+        pytester.mkdir("foo")
+        pytester.mkdir("foo/tests")
         conftest_path = "conftest.py" if initial_conftest else "foo/conftest.py"
         contents = {
             conftest_path: """
@@ -45,8 +50,8 @@ class TestImportHookInstallation:
                     check_first([10, 30], 30)
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.runpytest_subprocess("--assert=%s" % mode)
+        pytester.makepyfile(**contents)
+        result = pytester.runpytest_subprocess("--assert=%s" % mode)
         if mode == "plain":
             expected = "E       AssertionError"
         elif mode == "rewrite":
@@ -55,21 +60,21 @@ class TestImportHookInstallation:
             assert 0
         result.stdout.fnmatch_lines([expected])
 
-    def test_rewrite_assertions_pytester_plugin(self, testdir):
+    def test_rewrite_assertions_pytester_plugin(self, pytester: Pytester) -> None:
         """
         Assertions in the pytester plugin must also benefit from assertion
         rewriting (#1920).
         """
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             pytest_plugins = ['pytester']
-            def test_dummy_failure(testdir):  # how meta!
-                testdir.makepyfile('def test(): assert 0')
-                r = testdir.inline_run()
+            def test_dummy_failure(pytester):  # how meta!
+                pytester.makepyfile('def test(): assert 0')
+                r = pytester.inline_run()
                 r.assertoutcome(passed=1)
         """
         )
-        result = testdir.runpytest_subprocess()
+        result = pytester.runpytest_subprocess()
         result.stdout.fnmatch_lines(
             [
                 ">       r.assertoutcome(passed=1)",
@@ -89,7 +94,7 @@ class TestImportHookInstallation:
         )
 
     @pytest.mark.parametrize("mode", ["plain", "rewrite"])
-    def test_pytest_plugins_rewrite(self, testdir, mode):
+    def test_pytest_plugins_rewrite(self, pytester: Pytester, mode) -> None:
         contents = {
             "conftest.py": """
                 pytest_plugins = ['ham']
@@ -107,8 +112,8 @@ class TestImportHookInstallation:
                     check_first([10, 30], 30)
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.runpytest_subprocess("--assert=%s" % mode)
+        pytester.makepyfile(**contents)
+        result = pytester.runpytest_subprocess("--assert=%s" % mode)
         if mode == "plain":
             expected = "E       AssertionError"
         elif mode == "rewrite":
@@ -118,7 +123,9 @@ class TestImportHookInstallation:
         result.stdout.fnmatch_lines([expected])
 
     @pytest.mark.parametrize("mode", ["str", "list"])
-    def test_pytest_plugins_rewrite_module_names(self, testdir, mode):
+    def test_pytest_plugins_rewrite_module_names(
+        self, pytester: Pytester, mode
+    ) -> None:
         """Test that pluginmanager correct marks pytest_plugins variables
         for assertion rewriting if they are defined as plain strings or
         list of strings (#1888).
@@ -138,11 +145,13 @@ class TestImportHookInstallation:
                     assert 'ham' in pytestconfig.pluginmanager.rewrite_hook._must_rewrite
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.runpytest_subprocess("--assert=rewrite")
+        pytester.makepyfile(**contents)
+        result = pytester.runpytest_subprocess("--assert=rewrite")
         assert result.ret == 0
 
-    def test_pytest_plugins_rewrite_module_names_correctly(self, testdir):
+    def test_pytest_plugins_rewrite_module_names_correctly(
+        self, pytester: Pytester
+    ) -> None:
         """Test that we match files correctly when they are marked for rewriting (#2939)."""
         contents = {
             "conftest.py": """\
@@ -156,16 +165,18 @@ class TestImportHookInstallation:
                     assert pytestconfig.pluginmanager.rewrite_hook.find_spec('hamster') is None
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.runpytest_subprocess("--assert=rewrite")
+        pytester.makepyfile(**contents)
+        result = pytester.runpytest_subprocess("--assert=rewrite")
         assert result.ret == 0
 
     @pytest.mark.parametrize("mode", ["plain", "rewrite"])
-    def test_installed_plugin_rewrite(self, testdir, mode, monkeypatch):
+    def test_installed_plugin_rewrite(
+        self, pytester: Pytester, mode, monkeypatch
+    ) -> None:
         monkeypatch.delenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", raising=False)
         # Make sure the hook is installed early enough so that plugins
         # installed via setuptools are rewritten.
-        testdir.tmpdir.join("hampkg").ensure(dir=1)
+        pytester.mkdir("hampkg")
         contents = {
             "hampkg/__init__.py": """\
                 import pytest
@@ -219,8 +230,8 @@ class TestImportHookInstallation:
                 check_first([10, 30], 30)
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.run(
+        pytester.makepyfile(**contents)
+        result = pytester.run(
             sys.executable, "mainwrapper.py", "-s", "--assert=%s" % mode
         )
         if mode == "plain":
@@ -231,8 +242,8 @@ class TestImportHookInstallation:
             assert 0
         result.stdout.fnmatch_lines([expected])
 
-    def test_rewrite_ast(self, testdir):
-        testdir.tmpdir.join("pkg").ensure(dir=1)
+    def test_rewrite_ast(self, pytester: Pytester) -> None:
+        pytester.mkdir("pkg")
         contents = {
             "pkg/__init__.py": """
                 import pytest
@@ -265,8 +276,8 @@ class TestImportHookInstallation:
                     pkg.other.tool()
             """,
         }
-        testdir.makepyfile(**contents)
-        result = testdir.runpytest_subprocess("--assert=rewrite")
+        pytester.makepyfile(**contents)
+        result = pytester.runpytest_subprocess("--assert=rewrite")
         result.stdout.fnmatch_lines(
             [
                 ">*assert a == b*",
@@ -285,8 +296,8 @@ class TestImportHookInstallation:
 
 
 class TestBinReprIntegration:
-    def test_pytest_assertrepr_compare_called(self, testdir):
-        testdir.makeconftest(
+    def test_pytest_assertrepr_compare_called(self, pytester: Pytester) -> None:
+        pytester.makeconftest(
             """
             import pytest
             values = []
@@ -298,7 +309,7 @@ class TestBinReprIntegration:
                 return values
         """
         )
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def test_hello():
                 assert 0 == 1
@@ -306,7 +317,7 @@ class TestBinReprIntegration:
                 assert list == [("==", 0, 1)]
         """
         )
-        result = testdir.runpytest("-v")
+        result = pytester.runpytest("-v")
         result.stdout.fnmatch_lines(["*test_hello*FAIL*", "*test_check*PASS*"])
 
 
@@ -320,7 +331,7 @@ def callequal(left: Any, right: Any, verbose: int = 0) -> Optional[List[str]]:
 
 
 class TestAssert_reprcompare:
-    def test_different_types(self):
+    def test_different_types(self) -> None:
         assert callequal([0, 1], "foo") is None
 
     def test_summary(self) -> None:
@@ -329,7 +340,7 @@ class TestAssert_reprcompare:
         summary = lines[0]
         assert len(summary) < 65
 
-    def test_text_diff(self):
+    def test_text_diff(self) -> None:
         assert callequal("spam", "eggs") == [
             "'spam' == 'eggs'",
             "- eggs",
@@ -357,7 +368,7 @@ class TestAssert_reprcompare:
         assert "- eggs" in diff
         assert "+ spam" in diff
 
-    def test_bytes_diff_normal(self):
+    def test_bytes_diff_normal(self) -> None:
         """Check special handling for bytes diff (#5260)"""
         diff = callequal(b"spam", b"eggs")
 
@@ -367,7 +378,7 @@ class TestAssert_reprcompare:
             "Use -v to get the full diff",
         ]
 
-    def test_bytes_diff_verbose(self):
+    def test_bytes_diff_verbose(self) -> None:
         """Check special handling for bytes diff (#5260)"""
         diff = callequal(b"spam", b"eggs", verbose=1)
         assert diff == [
@@ -445,7 +456,7 @@ class TestAssert_reprcompare:
         assert expl is not None
         assert len(expl) > 1
 
-    def test_list_wrap_for_multiple_lines(self):
+    def test_list_wrap_for_multiple_lines(self) -> None:
         long_d = "d" * 80
         l1 = ["a", "b", "c"]
         l2 = ["a", "b", "c", long_d]
@@ -475,7 +486,7 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_list_wrap_for_width_rewrap_same_length(self):
+    def test_list_wrap_for_width_rewrap_same_length(self) -> None:
         long_a = "a" * 30
         long_b = "b" * 30
         long_c = "c" * 30
@@ -494,7 +505,7 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_list_dont_wrap_strings(self):
+    def test_list_dont_wrap_strings(self) -> None:
         long_a = "a" * 10
         l1 = ["a"] + [long_a for _ in range(0, 7)]
         l2 = ["should not get wrapped"]
@@ -517,7 +528,7 @@ class TestAssert_reprcompare:
             "  ]",
         ]
 
-    def test_dict_wrap(self):
+    def test_dict_wrap(self) -> None:
         d1 = {"common": 1, "env": {"env1": 1, "env2": 2}}
         d2 = {"common": 1, "env": {"env1": 1}}
 
@@ -581,7 +592,7 @@ class TestAssert_reprcompare:
         assert "Omitting" not in lines[1]
         assert lines[2] == "{'b': 1}"
 
-    def test_dict_different_items(self):
+    def test_dict_different_items(self) -> None:
         lines = callequal({"a": 0}, {"b": 1, "c": 2}, verbose=2)
         assert lines == [
             "{'a': 0} == {'b': 1, 'c': 2}",
@@ -605,7 +616,7 @@ class TestAssert_reprcompare:
             "+ {'b': 1, 'c': 2}",
         ]
 
-    def test_sequence_different_items(self):
+    def test_sequence_different_items(self) -> None:
         lines = callequal((1, 2), (3, 4, 5), verbose=2)
         assert lines == [
             "(1, 2) == (3, 4, 5)",
@@ -714,7 +725,7 @@ class TestAssert_reprcompare:
             " Probably an object has a faulty __repr__.)",
         ]
 
-    def test_one_repr_empty(self):
+    def test_one_repr_empty(self) -> None:
         """The faulty empty string repr did trigger an unbound local error in _diff_text."""
 
         class A(str):
@@ -729,14 +740,14 @@ class TestAssert_reprcompare:
         assert expl is not None
         assert "raised in repr()" not in " ".join(expl)
 
-    def test_unicode(self):
+    def test_unicode(self) -> None:
         assert callequal("£€", "£") == [
             "'£€' == '£'",
             "- £",
             "+ £€",
         ]
 
-    def test_nonascii_text(self):
+    def test_nonascii_text(self) -> None:
         """
         :issue: 877
         non ascii python2 str caused a UnicodeDecodeError
@@ -749,7 +760,7 @@ class TestAssert_reprcompare:
         expl = callequal(A(), "1")
         assert expl == ["ÿ == '1'", "- 1"]
 
-    def test_format_nonascii_explanation(self):
+    def test_format_nonascii_explanation(self) -> None:
         assert util.format_explanation("λ")
 
     def test_mojibake(self) -> None:
@@ -766,9 +777,9 @@ class TestAssert_reprcompare:
 
 class TestAssert_reprcompare_dataclass:
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_dataclasses(self, testdir):
-        p = testdir.copy_example("dataclasses/test_compare_dataclasses.py")
-        result = testdir.runpytest(p)
+    def test_dataclasses(self, pytester: Pytester) -> None:
+        p = pytester.copy_example("dataclasses/test_compare_dataclasses.py")
+        result = pytester.runpytest(p)
         result.assert_outcomes(failed=1, passed=0)
         result.stdout.fnmatch_lines(
             [
@@ -785,9 +796,9 @@ class TestAssert_reprcompare_dataclass:
         )
 
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_recursive_dataclasses(self, testdir):
-        p = testdir.copy_example("dataclasses/test_compare_recursive_dataclasses.py")
-        result = testdir.runpytest(p)
+    def test_recursive_dataclasses(self, pytester: Pytester) -> None:
+        p = pytester.copy_example("dataclasses/test_compare_recursive_dataclasses.py")
+        result = pytester.runpytest(p)
         result.assert_outcomes(failed=1, passed=0)
         result.stdout.fnmatch_lines(
             [
@@ -804,9 +815,9 @@ class TestAssert_reprcompare_dataclass:
         )
 
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_recursive_dataclasses_verbose(self, testdir):
-        p = testdir.copy_example("dataclasses/test_compare_recursive_dataclasses.py")
-        result = testdir.runpytest(p, "-vv")
+    def test_recursive_dataclasses_verbose(self, pytester: Pytester) -> None:
+        p = pytester.copy_example("dataclasses/test_compare_recursive_dataclasses.py")
+        result = pytester.runpytest(p, "-vv")
         result.assert_outcomes(failed=1, passed=0)
         result.stdout.fnmatch_lines(
             [
@@ -837,9 +848,9 @@ class TestAssert_reprcompare_dataclass:
         )
 
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_dataclasses_verbose(self, testdir):
-        p = testdir.copy_example("dataclasses/test_compare_dataclasses_verbose.py")
-        result = testdir.runpytest(p, "-vv")
+    def test_dataclasses_verbose(self, pytester: Pytester) -> None:
+        p = pytester.copy_example("dataclasses/test_compare_dataclasses_verbose.py")
+        result = pytester.runpytest(p, "-vv")
         result.assert_outcomes(failed=1, passed=0)
         result.stdout.fnmatch_lines(
             [
@@ -851,19 +862,21 @@ class TestAssert_reprcompare_dataclass:
         )
 
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_dataclasses_with_attribute_comparison_off(self, testdir):
-        p = testdir.copy_example(
+    def test_dataclasses_with_attribute_comparison_off(
+        self, pytester: Pytester
+    ) -> None:
+        p = pytester.copy_example(
             "dataclasses/test_compare_dataclasses_field_comparison_off.py"
         )
-        result = testdir.runpytest(p, "-vv")
+        result = pytester.runpytest(p, "-vv")
         result.assert_outcomes(failed=0, passed=1)
 
     @pytest.mark.skipif(sys.version_info < (3, 7), reason="Dataclasses in Python3.7+")
-    def test_comparing_two_different_data_classes(self, testdir):
-        p = testdir.copy_example(
+    def test_comparing_two_different_data_classes(self, pytester: Pytester) -> None:
+        p = pytester.copy_example(
             "dataclasses/test_compare_two_different_dataclasses.py"
         )
-        result = testdir.runpytest(p, "-vv")
+        result = pytester.runpytest(p, "-vv")
         result.assert_outcomes(failed=0, passed=1)
 
 
@@ -939,7 +952,7 @@ class TestAssert_reprcompare_attrsclass:
         assert "Omitting" not in lines[2]
         assert lines[3] == "['field_a']"
 
-    def test_attrs_with_attribute_comparison_off(self):
+    def test_attrs_with_attribute_comparison_off(self) -> None:
         @attr.s
         class SimpleDataObject:
             field_a = attr.ib()
@@ -957,7 +970,7 @@ class TestAssert_reprcompare_attrsclass:
         for line in lines[3:]:
             assert "field_b" not in line
 
-    def test_comparing_two_different_attrs_classes(self):
+    def test_comparing_two_different_attrs_classes(self) -> None:
         @attr.s
         class SimpleDataObjectOne:
             field_a = attr.ib()
@@ -975,49 +988,87 @@ class TestAssert_reprcompare_attrsclass:
         assert lines is None
 
 
+class TestAssert_reprcompare_namedtuple:
+    def test_namedtuple(self) -> None:
+        NT = collections.namedtuple("NT", ["a", "b"])
+
+        left = NT(1, "b")
+        right = NT(1, "c")
+
+        lines = callequal(left, right)
+        assert lines == [
+            "NT(a=1, b='b') == NT(a=1, b='c')",
+            "",
+            "Omitting 1 identical items, use -vv to show",
+            "Differing attributes:",
+            "['b']",
+            "",
+            "Drill down into differing attribute b:",
+            "  b: 'b' != 'c'",
+            "  - c",
+            "  + b",
+            "Use -v to get the full diff",
+        ]
+
+    def test_comparing_two_different_namedtuple(self) -> None:
+        NT1 = collections.namedtuple("NT1", ["a", "b"])
+        NT2 = collections.namedtuple("NT2", ["a", "b"])
+
+        left = NT1(1, "b")
+        right = NT2(2, "b")
+
+        lines = callequal(left, right)
+        # Because the types are different, uses the generic sequence matcher.
+        assert lines == [
+            "NT1(a=1, b='b') == NT2(a=2, b='b')",
+            "At index 0 diff: 1 != 2",
+            "Use -v to get the full diff",
+        ]
+
+
 class TestFormatExplanation:
-    def test_special_chars_full(self, testdir):
+    def test_special_chars_full(self, pytester: Pytester) -> None:
         # Issue 453, for the bug this would raise IndexError
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def test_foo():
                 assert '\\n}' == ''
         """
         )
-        result = testdir.runpytest()
+        result = pytester.runpytest()
         assert result.ret == 1
         result.stdout.fnmatch_lines(["*AssertionError*"])
 
-    def test_fmt_simple(self):
+    def test_fmt_simple(self) -> None:
         expl = "assert foo"
         assert util.format_explanation(expl) == "assert foo"
 
-    def test_fmt_where(self):
+    def test_fmt_where(self) -> None:
         expl = "\n".join(["assert 1", "{1 = foo", "} == 2"])
         res = "\n".join(["assert 1 == 2", " +  where 1 = foo"])
         assert util.format_explanation(expl) == res
 
-    def test_fmt_and(self):
+    def test_fmt_and(self) -> None:
         expl = "\n".join(["assert 1", "{1 = foo", "} == 2", "{2 = bar", "}"])
         res = "\n".join(["assert 1 == 2", " +  where 1 = foo", " +  and   2 = bar"])
         assert util.format_explanation(expl) == res
 
-    def test_fmt_where_nested(self):
+    def test_fmt_where_nested(self) -> None:
         expl = "\n".join(["assert 1", "{1 = foo", "{foo = bar", "}", "} == 2"])
         res = "\n".join(["assert 1 == 2", " +  where 1 = foo", " +    where foo = bar"])
         assert util.format_explanation(expl) == res
 
-    def test_fmt_newline(self):
+    def test_fmt_newline(self) -> None:
         expl = "\n".join(['assert "foo" == "bar"', "~- foo", "~+ bar"])
         res = "\n".join(['assert "foo" == "bar"', "  - foo", "  + bar"])
         assert util.format_explanation(expl) == res
 
-    def test_fmt_newline_escaped(self):
+    def test_fmt_newline_escaped(self) -> None:
         expl = "\n".join(["assert foo == bar", "baz"])
         res = "assert foo == bar\\nbaz"
         assert util.format_explanation(expl) == res
 
-    def test_fmt_newline_before_where(self):
+    def test_fmt_newline_before_where(self) -> None:
         expl = "\n".join(
             [
                 "the assertion message here",
@@ -1038,7 +1089,7 @@ class TestFormatExplanation:
         )
         assert util.format_explanation(expl) == res
 
-    def test_fmt_multi_newline_before_where(self):
+    def test_fmt_multi_newline_before_where(self) -> None:
         expl = "\n".join(
             [
                 "the assertion",
@@ -1072,12 +1123,12 @@ class TestTruncateExplanation:
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=100)
         assert result == expl
 
-    def test_doesnt_truncate_at_when_input_is_5_lines_and_LT_max_chars(self):
+    def test_doesnt_truncate_at_when_input_is_5_lines_and_LT_max_chars(self) -> None:
         expl = ["a" * 100 for x in range(5)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=8 * 80)
         assert result == expl
 
-    def test_truncates_at_8_lines_when_given_list_of_empty_strings(self):
+    def test_truncates_at_8_lines_when_given_list_of_empty_strings(self) -> None:
         expl = ["" for x in range(50)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=100)
         assert result != expl
@@ -1087,7 +1138,7 @@ class TestTruncateExplanation:
         last_line_before_trunc_msg = result[-self.LINES_IN_TRUNCATION_MSG - 1]
         assert last_line_before_trunc_msg.endswith("...")
 
-    def test_truncates_at_8_lines_when_first_8_lines_are_LT_max_chars(self):
+    def test_truncates_at_8_lines_when_first_8_lines_are_LT_max_chars(self) -> None:
         expl = ["a" for x in range(100)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=8 * 80)
         assert result != expl
@@ -1097,7 +1148,7 @@ class TestTruncateExplanation:
         last_line_before_trunc_msg = result[-self.LINES_IN_TRUNCATION_MSG - 1]
         assert last_line_before_trunc_msg.endswith("...")
 
-    def test_truncates_at_8_lines_when_first_8_lines_are_EQ_max_chars(self):
+    def test_truncates_at_8_lines_when_first_8_lines_are_EQ_max_chars(self) -> None:
         expl = ["a" * 80 for x in range(16)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=8 * 80)
         assert result != expl
@@ -1107,7 +1158,7 @@ class TestTruncateExplanation:
         last_line_before_trunc_msg = result[-self.LINES_IN_TRUNCATION_MSG - 1]
         assert last_line_before_trunc_msg.endswith("...")
 
-    def test_truncates_at_4_lines_when_first_4_lines_are_GT_max_chars(self):
+    def test_truncates_at_4_lines_when_first_4_lines_are_GT_max_chars(self) -> None:
         expl = ["a" * 250 for x in range(10)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=999)
         assert result != expl
@@ -1117,7 +1168,7 @@ class TestTruncateExplanation:
         last_line_before_trunc_msg = result[-self.LINES_IN_TRUNCATION_MSG - 1]
         assert last_line_before_trunc_msg.endswith("...")
 
-    def test_truncates_at_1_line_when_first_line_is_GT_max_chars(self):
+    def test_truncates_at_1_line_when_first_line_is_GT_max_chars(self) -> None:
         expl = ["a" * 250 for x in range(1000)]
         result = truncate._truncate_explanation(expl, max_lines=8, max_chars=100)
         assert result != expl
@@ -1127,13 +1178,13 @@ class TestTruncateExplanation:
         last_line_before_trunc_msg = result[-self.LINES_IN_TRUNCATION_MSG - 1]
         assert last_line_before_trunc_msg.endswith("...")
 
-    def test_full_output_truncated(self, monkeypatch, testdir):
+    def test_full_output_truncated(self, monkeypatch, pytester: Pytester) -> None:
         """Test against full runpytest() output."""
 
         line_count = 7
         line_len = 100
         expected_truncated_lines = 2
-        testdir.makepyfile(
+        pytester.makepyfile(
             r"""
             def test_many_lines():
                 a = list([str(i)[0] * %d for i in range(%d)])
@@ -1146,7 +1197,7 @@ class TestTruncateExplanation:
         )
         monkeypatch.delenv("CI", raising=False)
 
-        result = testdir.runpytest()
+        result = pytester.runpytest()
         # without -vv, truncate the message showing a few diff lines only
         result.stdout.fnmatch_lines(
             [
@@ -1157,23 +1208,23 @@ class TestTruncateExplanation:
             ]
         )
 
-        result = testdir.runpytest("-vv")
+        result = pytester.runpytest("-vv")
         result.stdout.fnmatch_lines(["* 6*"])
 
         monkeypatch.setenv("CI", "1")
-        result = testdir.runpytest()
+        result = pytester.runpytest()
         result.stdout.fnmatch_lines(["* 6*"])
 
 
-def test_python25_compile_issue257(testdir):
-    testdir.makepyfile(
+def test_python25_compile_issue257(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_rewritten():
             assert 1 == 2
         # some comment
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     assert result.ret == 1
     result.stdout.fnmatch_lines(
         """
@@ -1183,14 +1234,14 @@ def test_python25_compile_issue257(testdir):
     )
 
 
-def test_rewritten(testdir):
-    testdir.makepyfile(
+def test_rewritten(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_rewritten():
             assert "@py_builtins" in globals()
     """
     )
-    assert testdir.runpytest().ret == 0
+    assert pytester.runpytest().ret == 0
 
 
 def test_reprcompare_notin() -> None:
@@ -1202,7 +1253,7 @@ def test_reprcompare_notin() -> None:
     ]
 
 
-def test_reprcompare_whitespaces():
+def test_reprcompare_whitespaces() -> None:
     assert callequal("\r\n", "\n") == [
         r"'\r\n' == '\n'",
         r"Strings contain only whitespace, escaping them using repr()",
@@ -1212,8 +1263,8 @@ def test_reprcompare_whitespaces():
     ]
 
 
-def test_pytest_assertrepr_compare_integration(testdir):
-    testdir.makepyfile(
+def test_pytest_assertrepr_compare_integration(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_hello():
             x = set(range(100))
@@ -1222,7 +1273,7 @@ def test_pytest_assertrepr_compare_integration(testdir):
             assert x == y
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         [
             "*def test_hello():*",
@@ -1234,8 +1285,8 @@ def test_pytest_assertrepr_compare_integration(testdir):
     )
 
 
-def test_sequence_comparison_uses_repr(testdir):
-    testdir.makepyfile(
+def test_sequence_comparison_uses_repr(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_hello():
             x = set("hello x")
@@ -1243,7 +1294,7 @@ def test_sequence_comparison_uses_repr(testdir):
             assert x == y
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         [
             "*def test_hello():*",
@@ -1256,19 +1307,20 @@ def test_sequence_comparison_uses_repr(testdir):
     )
 
 
-def test_assertrepr_loaded_per_dir(testdir):
-    testdir.makepyfile(test_base=["def test_base(): assert 1 == 2"])
-    a = testdir.mkdir("a")
-    a_test = a.join("test_a.py")
-    a_test.write("def test_a(): assert 1 == 2")
-    a_conftest = a.join("conftest.py")
-    a_conftest.write('def pytest_assertrepr_compare(): return ["summary a"]')
-    b = testdir.mkdir("b")
-    b_test = b.join("test_b.py")
-    b_test.write("def test_b(): assert 1 == 2")
-    b_conftest = b.join("conftest.py")
-    b_conftest.write('def pytest_assertrepr_compare(): return ["summary b"]')
-    result = testdir.runpytest()
+def test_assertrepr_loaded_per_dir(pytester: Pytester) -> None:
+    pytester.makepyfile(test_base=["def test_base(): assert 1 == 2"])
+    a = pytester.mkdir("a")
+    a.joinpath("test_a.py").write_text("def test_a(): assert 1 == 2")
+    a.joinpath("conftest.py").write_text(
+        'def pytest_assertrepr_compare(): return ["summary a"]'
+    )
+    b = pytester.mkdir("b")
+    b.joinpath("test_b.py").write_text("def test_b(): assert 1 == 2")
+    b.joinpath("conftest.py").write_text(
+        'def pytest_assertrepr_compare(): return ["summary b"]'
+    )
+
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         [
             "*def test_base():*",
@@ -1281,34 +1333,34 @@ def test_assertrepr_loaded_per_dir(testdir):
     )
 
 
-def test_assertion_options(testdir):
-    testdir.makepyfile(
+def test_assertion_options(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_hello():
             x = 3
             assert x == 4
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     assert "3 == 4" in result.stdout.str()
-    result = testdir.runpytest_subprocess("--assert=plain")
+    result = pytester.runpytest_subprocess("--assert=plain")
     result.stdout.no_fnmatch_line("*3 == 4*")
 
 
-def test_triple_quoted_string_issue113(testdir):
-    testdir.makepyfile(
+def test_triple_quoted_string_issue113(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_hello():
             assert "" == '''
     '''"""
     )
-    result = testdir.runpytest("--fulltrace")
+    result = pytester.runpytest("--fulltrace")
     result.stdout.fnmatch_lines(["*1 failed*"])
     result.stdout.no_fnmatch_line("*SyntaxError*")
 
 
-def test_traceback_failure(testdir):
-    p1 = testdir.makepyfile(
+def test_traceback_failure(pytester: Pytester) -> None:
+    p1 = pytester.makepyfile(
         """
         def g():
             return 2
@@ -1318,7 +1370,7 @@ def test_traceback_failure(testdir):
             f(3)
     """
     )
-    result = testdir.runpytest(p1, "--tb=long")
+    result = pytester.runpytest(p1, "--tb=long")
     result.stdout.fnmatch_lines(
         [
             "*test_traceback_failure.py F*",
@@ -1340,7 +1392,7 @@ def test_traceback_failure(testdir):
         ]
     )
 
-    result = testdir.runpytest(p1)  # "auto"
+    result = pytester.runpytest(p1)  # "auto"
     result.stdout.fnmatch_lines(
         [
             "*test_traceback_failure.py F*",
@@ -1362,9 +1414,9 @@ def test_traceback_failure(testdir):
     )
 
 
-def test_exception_handling_no_traceback(testdir):
+def test_exception_handling_no_traceback(pytester: Pytester) -> None:
     """Handle chain exceptions in tasks submitted by the multiprocess module (#1984)."""
-    p1 = testdir.makepyfile(
+    p1 = pytester.makepyfile(
         """
         from multiprocessing import Pool
 
@@ -1380,8 +1432,8 @@ def test_exception_handling_no_traceback(testdir):
             multitask_job()
     """
     )
-    testdir.syspathinsert()
-    result = testdir.runpytest(p1, "--tb=long")
+    pytester.syspathinsert()
+    result = pytester.runpytest(p1, "--tb=long")
     result.stdout.fnmatch_lines(
         [
             "====* FAILURES *====",
@@ -1419,27 +1471,27 @@ def test_exception_handling_no_traceback(testdir):
         ),
     ],
 )
-def test_warn_missing(testdir, cmdline_args, warning_output):
-    testdir.makepyfile("")
+def test_warn_missing(pytester: Pytester, cmdline_args, warning_output) -> None:
+    pytester.makepyfile("")
 
-    result = testdir.run(sys.executable, *cmdline_args)
+    result = pytester.run(sys.executable, *cmdline_args)
     result.stdout.fnmatch_lines(warning_output)
 
 
-def test_recursion_source_decode(testdir):
-    testdir.makepyfile(
+def test_recursion_source_decode(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_something():
             pass
     """
     )
-    testdir.makeini(
+    pytester.makeini(
         """
         [pytest]
         python_files = *.py
     """
     )
-    result = testdir.runpytest("--collect-only")
+    result = pytester.runpytest("--collect-only")
     result.stdout.fnmatch_lines(
         """
         <Module*>
@@ -1447,15 +1499,15 @@ def test_recursion_source_decode(testdir):
     )
 
 
-def test_AssertionError_message(testdir):
-    testdir.makepyfile(
+def test_AssertionError_message(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_hello():
             x,y = 1,2
             assert 0, (x,y)
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         """
         *def test_hello*
@@ -1465,15 +1517,15 @@ def test_AssertionError_message(testdir):
     )
 
 
-def test_diff_newline_at_end(testdir):
-    testdir.makepyfile(
+def test_diff_newline_at_end(pytester: Pytester) -> None:
+    pytester.makepyfile(
         r"""
         def test_diff():
             assert 'asdf' == 'asdf\n'
     """
     )
 
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         r"""
         *assert 'asdf' == 'asdf\n'
@@ -1485,67 +1537,67 @@ def test_diff_newline_at_end(testdir):
 
 
 @pytest.mark.filterwarnings("default")
-def test_assert_tuple_warning(testdir):
+def test_assert_tuple_warning(pytester: Pytester) -> None:
     msg = "assertion is always true"
-    testdir.makepyfile(
+    pytester.makepyfile(
         """
         def test_tuple():
             assert(False, 'you shall not pass')
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines([f"*test_assert_tuple_warning.py:2:*{msg}*"])
 
     # tuples with size != 2 should not trigger the warning
-    testdir.makepyfile(
+    pytester.makepyfile(
         """
         def test_tuple():
             assert ()
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     assert msg not in result.stdout.str()
 
 
-def test_assert_indirect_tuple_no_warning(testdir):
-    testdir.makepyfile(
+def test_assert_indirect_tuple_no_warning(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def test_tuple():
             tpl = ('foo', 'bar')
             assert tpl
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     output = "\n".join(result.stdout.lines)
     assert "WR1" not in output
 
 
-def test_assert_with_unicode(testdir):
-    testdir.makepyfile(
+def test_assert_with_unicode(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """\
         def test_unicode():
             assert '유니코드' == 'Unicode'
         """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["*AssertionError*"])
 
 
-def test_raise_unprintable_assertion_error(testdir):
-    testdir.makepyfile(
+def test_raise_unprintable_assertion_error(pytester: Pytester) -> None:
+    pytester.makepyfile(
         r"""
         def test_raise_assertion_error():
             raise AssertionError('\xff')
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         [r">       raise AssertionError('\xff')", "E       AssertionError: *"]
     )
 
 
-def test_raise_assertion_error_raisin_repr(testdir):
-    testdir.makepyfile(
+def test_raise_assertion_error_raisin_repr(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         class RaisingRepr(object):
             def __repr__(self):
@@ -1554,14 +1606,14 @@ def test_raise_assertion_error_raisin_repr(testdir):
             raise AssertionError(RaisingRepr())
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(
         ["E       AssertionError: <unprintable AssertionError object>"]
     )
 
 
-def test_issue_1944(testdir):
-    testdir.makepyfile(
+def test_issue_1944(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def f():
             return
@@ -1569,7 +1621,7 @@ def test_issue_1944(testdir):
         assert f() == 10
     """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["*1 error*"])
     assert (
         "AttributeError: 'Module' object has no attribute '_obj'"
@@ -1577,7 +1629,7 @@ def test_issue_1944(testdir):
     )
 
 
-def test_exit_from_assertrepr_compare(monkeypatch):
+def test_exit_from_assertrepr_compare(monkeypatch) -> None:
     def raise_exit(obj):
         outcomes.exit("Quitting debugger")
 
@@ -1587,16 +1639,16 @@ def test_exit_from_assertrepr_compare(monkeypatch):
         callequal(1, 1)
 
 
-def test_assertion_location_with_coverage(testdir):
+def test_assertion_location_with_coverage(pytester: Pytester) -> None:
     """This used to report the wrong location when run with coverage (#5754)."""
-    p = testdir.makepyfile(
+    p = pytester.makepyfile(
         """
         def test():
             assert False, 1
             assert False, 2
         """
     )
-    result = testdir.runpytest(str(p))
+    result = pytester.runpytest(str(p))
     result.stdout.fnmatch_lines(
         [
             ">       assert False, 1",

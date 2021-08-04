@@ -1,0 +1,10 @@
+Improved :func:`pytest.approx` assertion messages for sequences of numbers.
+
+The assertion messages now dumps a table with the index and the error of each diff.
+Example::
+
+    >       assert [1, 2, 3, 4] == pytest.approx([1, 3, 3, 5])
+    E       assert comparison failed for 2 values:
+    E         Index | Obtained | Expected
+    E         1     | 2        | 3 +- 3.0e-06
+    E         3     | 4        | 5 +- 5.0e-06

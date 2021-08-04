@@ -2,9 +2,9 @@
 import pytest
 
 
-def pytest_collect_file(parent, path):
-    if path.ext == ".yaml" and path.basename.startswith("test"):
-        return YamlFile.from_parent(parent, fspath=path)
+def pytest_collect_file(parent, fspath):
+    if fspath.suffix == ".yaml" and fspath.name.startswith("test"):
+        return YamlFile.from_parent(parent, path=fspath)
 
 
 class YamlFile(pytest.File):
@@ -12,7 +12,7 @@ class YamlFile(pytest.File):
         # We need a yaml parser, e.g. PyYAML.
         import yaml
 
-        raw = yaml.safe_load(self.fspath.open())
+        raw = yaml.safe_load(self.path.open())
         for name, spec in sorted(raw.items()):
             yield YamlItem.from_parent(self, name=name, spec=spec)
 

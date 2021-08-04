@@ -2,6 +2,7 @@ import ast
 import inspect
 import textwrap
 import tokenize
+import types
 import warnings
 from bisect import bisect_right
 from typing import Iterable
@@ -29,8 +30,11 @@ class Source:
         elif isinstance(obj, str):
             self.lines = deindent(obj.split("\n"))
         else:
-            rawcode = getrawcode(obj)
-            src = inspect.getsource(rawcode)
+            try:
+                rawcode = getrawcode(obj)
+                src = inspect.getsource(rawcode)
+            except TypeError:
+                src = inspect.getsource(obj)  # type: ignore[arg-type]
             self.lines = deindent(src.split("\n"))
 
     def __eq__(self, other: object) -> bool:
@@ -122,19 +126,17 @@ def findsource(obj) -> Tuple[Optional[Source], int]:
     return source, lineno
 
 
-def getrawcode(obj, trycall: bool = True):
+def getrawcode(obj: object, trycall: bool = True) -> types.CodeType:
     """Return code object for given function."""
     try:
-        return obj.__code__
+        return obj.__code__  # type: ignore[attr-defined,no-any-return]
     except AttributeError:
-        obj = getattr(obj, "f_code", obj)
-        obj = getattr(obj, "__code__", obj)
-        if trycall and not hasattr(obj, "co_firstlineno"):
-            if hasattr(obj, "__call__") and not inspect.isclass(obj):
-                x = getrawcode(obj.__call__, trycall=False)
-                if hasattr(x, "co_firstlineno"):
-                    return x
-        return obj
+        pass
+    if trycall:
+        call = getattr(obj, "__call__", None)
+        if call and not isinstance(obj, type):
+            return getrawcode(call, trycall=False)
+    raise TypeError(f"could not get code object for {obj!r}")
 
 
 def deindent(lines: Iterable[str]) -> List[str]:

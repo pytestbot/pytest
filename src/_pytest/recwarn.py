@@ -16,6 +16,8 @@ from typing import TypeVar
 from typing import Union
 
 from _pytest.compat import final
+from _pytest.deprecated import check_ispytest
+from _pytest.deprecated import WARNS_NONE_ARG
 from _pytest.fixtures import fixture
 from _pytest.outcomes import fail
 
@@ -27,10 +29,10 @@ T = TypeVar("T")
 def recwarn() -> Generator["WarningsRecorder", None, None]:
     """Return a :class:`WarningsRecorder` instance that records all warnings emitted by test functions.
 
-    See http://docs.python.org/library/warnings.html for information
+    See https://docs.python.org/library/how-to/capture-warnings.html for information
     on warning categories.
     """
-    wrec = WarningsRecorder()
+    wrec = WarningsRecorder(_ispytest=True)
     with wrec:
         warnings.simplefilter("default")
         yield wrec
@@ -60,7 +62,8 @@ def deprecated_call(
         ...     warnings.warn('use v3 of this api', DeprecationWarning)
         ...     return 200
 
-        >>> with deprecated_call():
+        >>> import pytest
+        >>> with pytest.deprecated_call():
         ...    assert api_call_v2() == 200
 
     It can also be used by passing a function and ``*args`` and ``**kwargs``,
@@ -81,7 +84,7 @@ def deprecated_call(
 
 @overload
 def warns(
-    expected_warning: Optional[Union[Type[Warning], Tuple[Type[Warning], ...]]],
+    expected_warning: Union[Type[Warning], Tuple[Type[Warning], ...]] = ...,
     *,
     match: Optional[Union[str, Pattern[str]]] = ...,
 ) -> "WarningsChecker":
@@ -90,7 +93,7 @@ def warns(
 
 @overload
 def warns(
-    expected_warning: Optional[Union[Type[Warning], Tuple[Type[Warning], ...]]],
+    expected_warning: Union[Type[Warning], Tuple[Type[Warning], ...]],
     func: Callable[..., T],
     *args: Any,
     **kwargs: Any,
@@ -99,7 +102,7 @@ def warns(
 
 
 def warns(
-    expected_warning: Optional[Union[Type[Warning], Tuple[Type[Warning], ...]]],
+    expected_warning: Union[Type[Warning], Tuple[Type[Warning], ...]] = Warning,
     *args: Any,
     match: Optional[Union[str, Pattern[str]]] = None,
     **kwargs: Any,
@@ -114,21 +117,22 @@ def warns(
     one for each warning raised.
 
     This function can be used as a context manager, or any of the other ways
-    ``pytest.raises`` can be used::
+    :func:`pytest.raises` can be used::
 
-        >>> with warns(RuntimeWarning):
+        >>> import pytest
+        >>> with pytest.warns(RuntimeWarning):
         ...    warnings.warn("my warning", RuntimeWarning)
 
     In the context manager form you may use the keyword argument ``match`` to assert
     that the warning matches a text or regex::
 
-        >>> with warns(UserWarning, match='must be 0 or None'):
+        >>> with pytest.warns(UserWarning, match='must be 0 or None'):
         ...     warnings.warn("value must be 0 or None", UserWarning)
 
-        >>> with warns(UserWarning, match=r'must be \d+$'):
+        >>> with pytest.warns(UserWarning, match=r'must be \d+$'):
         ...     warnings.warn("value must be 42", UserWarning)
 
-        >>> with warns(UserWarning, match=r'must be \d+$'):
+        >>> with pytest.warns(UserWarning, match=r'must be \d+$'):
         ...     warnings.warn("this is not here", UserWarning)
         Traceback (most recent call last):
           ...
@@ -142,14 +146,12 @@ def warns(
             msg += ", ".join(sorted(kwargs))
             msg += "\nUse context-manager form instead?"
             raise TypeError(msg)
-        return WarningsChecker(expected_warning, match_expr=match)
+        return WarningsChecker(expected_warning, match_expr=match, _ispytest=True)
     else:
         func = args[0]
         if not callable(func):
-            raise TypeError(
-                "{!r} object (type: {}) must be callable".format(func, type(func))
-            )
-        with WarningsChecker(expected_warning):
+            raise TypeError(f"{func!r} object (type: {type(func)}) must be callable")
+        with WarningsChecker(expected_warning, _ispytest=True):
             return func(*args[1:], **kwargs)
 
 
@@ -159,7 +161,8 @@ class WarningsRecorder(warnings.catch_warnings):
     Adapted from `warnings.catch_warnings`.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, _ispytest: bool = False) -> None:
+        check_ispytest(_ispytest)
         # Type ignored due to the way typeshed handles warnings.catch_warnings.
         super().__init__(record=True)  # type: ignore[call-arg]
         self._entered = False
@@ -230,13 +233,17 @@ class WarningsChecker(WarningsRecorder):
         self,
         expected_warning: Optional[
             Union[Type[Warning], Tuple[Type[Warning], ...]]
-        ] = None,
+        ] = Warning,
         match_expr: Optional[Union[str, Pattern[str]]] = None,
+        *,
+        _ispytest: bool = False,
     ) -> None:
-        super().__init__()
+        check_ispytest(_ispytest)
+        super().__init__(_ispytest=True)
 
         msg = "exceptions must be derived from Warning, not %s"
         if expected_warning is None:
+            warnings.warn(WARNS_NONE_ARG, stacklevel=4)
             expected_warning_tup = None
         elif isinstance(expected_warning, tuple):
             for exc in expected_warning:

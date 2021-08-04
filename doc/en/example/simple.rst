@@ -69,7 +69,7 @@ Here is a basic pattern to achieve this:
 
 
 For this to work we need to add a command line option and
-provide the ``cmdopt`` through a :ref:`fixture function <fixture function>`:
+provide the ``cmdopt`` through a :ref:`fixture function <fixture>`:
 
 .. code-block:: python
 
@@ -139,10 +139,66 @@ And now with supplying a command line option:
     FAILED test_sample.py::test_answer - assert 0
     1 failed in 0.12s
 
-You can see that the command line option arrived in our test.  This
-completes the basic pattern.  However, one often rather wants to process
-command line options outside of the test and rather pass in different or
-more complex objects.
+You can see that the command line option arrived in our test.
+
+We could add simple validation for the input by listing the choices:
+
+.. code-block:: python
+
+    # content of conftest.py
+    import pytest
+
+
+    def pytest_addoption(parser):
+        parser.addoption(
+            "--cmdopt",
+            action="store",
+            default="type1",
+            help="my option: type1 or type2",
+            choices=("type1", "type2"),
+        )
+
+Now we'll get feedback on a bad argument:
+
+.. code-block:: pytest
+
+    $ pytest -q --cmdopt=type3
+    ERROR: usage: pytest [options] [file_or_dir] [file_or_dir] [...]
+    pytest: error: argument --cmdopt: invalid choice: 'type3' (choose from 'type1', 'type2')
+
+If you need to provide more detailed error messages, you can use the
+``type`` parameter and raise ``pytest.UsageError``:
+
+.. code-block:: python
+
+    # content of conftest.py
+    import pytest
+
+
+    def type_checker(value):
+        msg = "cmdopt must specify a numeric type as typeNNN"
+        if not value.startswith("type"):
+            raise pytest.UsageError(msg)
+        try:
+            int(value[4:])
+        except ValueError:
+            raise pytest.UsageError(msg)
+
+        return value
+
+
+    def pytest_addoption(parser):
+        parser.addoption(
+            "--cmdopt",
+            action="store",
+            default="type1",
+            help="my option: type1 or type2",
+            type=type_checker,
+        )
+
+This completes the basic pattern.  However, one often rather wants to
+process command line options outside of the test and rather pass in
+different or more complex objects.
 
 Dynamically adding command line options
 --------------------------------------------------------------
@@ -452,7 +508,7 @@ and nothing when run plainly:
 
     ========================== no tests ran in 0.12s ===========================
 
-profiling test duration
+Profiling test duration
 --------------------------
 
 .. regendoc:wipe
@@ -498,7 +554,7 @@ Now we can profile which test functions execute the slowest:
     0.10s call     test_some_are_slow.py::test_funcfast
     ============================ 3 passed in 0.12s =============================
 
-incremental testing - test steps
+Incremental testing - test steps
 ---------------------------------------------------
 
 .. regendoc:wipe
@@ -621,7 +677,7 @@ Package/Directory-level fixtures (setups)
 -------------------------------------------------------
 
 If you have nested test directories, you can have per-directory fixture scopes
-by placing fixture functions in a ``conftest.py`` file in that directory
+by placing fixture functions in a ``conftest.py`` file in that directory.
 You can use all types of fixtures including :ref:`autouse fixtures
 <autouse fixtures>` which are the equivalent of xUnit's setup/teardown
 concept.  It's however recommended to have explicit fixture references in your
@@ -739,7 +795,7 @@ it (unless you use "autouse" fixture which are always executed ahead of the firs
 executing).
 
 
-post-process test reports / failures
+Post-process test reports / failures
 ---------------------------------------
 
 If you want to postprocess test reports and need access to the executing
@@ -768,8 +824,8 @@ case we just write some information out to a ``failures`` file:
             mode = "a" if os.path.exists("failures") else "w"
             with open("failures", mode) as f:
                 # let's also access a fixture for the fun of it
-                if "tmpdir" in item.fixturenames:
-                    extra = " ({})".format(item.funcargs["tmpdir"])
+                if "tmp_path" in item.fixturenames:
+                    extra = " ({})".format(item.funcargs["tmp_path"])
                 else:
                     extra = ""
 
@@ -781,7 +837,7 @@ if you then have failing tests:
 .. code-block:: python
 
     # content of test_module.py
-    def test_fail1(tmpdir):
+    def test_fail1(tmp_path):
         assert 0
 
 
@@ -804,9 +860,9 @@ and run them:
     ================================= FAILURES =================================
     ________________________________ test_fail1 ________________________________
 
-    tmpdir = local('PYTEST_TMPDIR/test_fail10')
+    tmp_path = Path('PYTEST_TMPDIR/test_fail10')
 
-        def test_fail1(tmpdir):
+        def test_fail1(tmp_path):
     >       assert 0
     E       assert 0
 
@@ -1012,7 +1068,7 @@ your frozen program work as the pytest runner by some clever
 argument handling during program startup. This allows you to
 have a single executable, which is usually more convenient.
 Please note that the mechanism for plugin discovery used by pytest
-(setupttools entry points) doesn't work with frozen executables so pytest
+(setuptools entry points) doesn't work with frozen executables so pytest
 can't find any third party plugins automatically. To include third party plugins
 like ``pytest-timeout`` they must be imported explicitly and passed on to pytest.main.
 

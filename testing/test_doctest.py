@@ -1,12 +1,12 @@
 import inspect
 import textwrap
+from pathlib import Path
 from typing import Callable
 from typing import Optional
 
-import py
-
 import pytest
 from _pytest.doctest import _get_checker
+from _pytest.doctest import _is_main_py
 from _pytest.doctest import _is_mocked
 from _pytest.doctest import _is_setup_py
 from _pytest.doctest import _patch_unwrap_mock_aware
@@ -68,9 +68,15 @@ class TestDoctests:
             assert isinstance(items[0].parent, DoctestModule)
             assert items[0].parent is items[1].parent
 
-    def test_collect_module_two_doctest_no_modulelevel(self, pytester: Pytester):
+    @pytest.mark.parametrize("filename", ["__init__", "whatever"])
+    def test_collect_module_two_doctest_no_modulelevel(
+        self,
+        pytester: Pytester,
+        filename: str,
+    ) -> None:
         path = pytester.makepyfile(
-            whatever="""
+            **{
+                filename: """
             '# Empty'
             def my_func():
                 ">>> magic = 42 "
@@ -84,7 +90,8 @@ class TestDoctests:
                 # This is another function
                 >>> import os # this one does have a doctest
                 '''
-        """
+            """,
+            },
         )
         for p in (path, pytester.path):
             items, reprec = pytester.inline_genitems(p, "--doctest-modules")
@@ -724,12 +731,11 @@ class TestDoctests:
             test_unicode_doctest="""
             .. doctest::
 
-                >>> print(
-                ...    "Hi\\n\\nByé")
+                >>> print("Hi\\n\\nByé")
                 Hi
                 ...
                 Byé
-                >>> 1/0  # Byé
+                >>> 1 / 0  # Byé
                 1
         """
         )
@@ -805,6 +811,11 @@ class TestDoctests:
         )
         result = pytester.runpytest(p, "--doctest-modules")
         result.stdout.fnmatch_lines(["*collected 0 items*"])
+
+    def test_main_py_does_not_cause_import_errors(self, pytester: Pytester):
+        p = pytester.copy_example("doctest/main_py")
+        result = pytester.runpytest(p, "--doctest-modules")
+        result.stdout.fnmatch_lines(["*collected 2 items*", "*1 failed, 1 passed*"])
 
     def test_invalid_setup_py(self, pytester: Pytester):
         """
@@ -1491,25 +1502,33 @@ def test_warning_on_unwrap_of_broken_object(
     assert inspect.unwrap.__module__ == "inspect"
 
 
-def test_is_setup_py_not_named_setup_py(tmp_path):
+def test_is_setup_py_not_named_setup_py(tmp_path: Path) -> None:
     not_setup_py = tmp_path.joinpath("not_setup.py")
     not_setup_py.write_text('from setuptools import setup; setup(name="foo")')
-    assert not _is_setup_py(py.path.local(str(not_setup_py)))
+    assert not _is_setup_py(not_setup_py)
 
 
 @pytest.mark.parametrize("mod", ("setuptools", "distutils.core"))
-def test_is_setup_py_is_a_setup_py(tmpdir, mod):
-    setup_py = tmpdir.join("setup.py")
-    setup_py.write(f'from {mod} import setup; setup(name="foo")')
+def test_is_setup_py_is_a_setup_py(tmp_path: Path, mod: str) -> None:
+    setup_py = tmp_path.joinpath("setup.py")
+    setup_py.write_text(f'from {mod} import setup; setup(name="foo")', "utf-8")
     assert _is_setup_py(setup_py)
 
 
 @pytest.mark.parametrize("mod", ("setuptools", "distutils.core"))
-def test_is_setup_py_different_encoding(tmp_path, mod):
+def test_is_setup_py_different_encoding(tmp_path: Path, mod: str) -> None:
     setup_py = tmp_path.joinpath("setup.py")
     contents = (
         "# -*- coding: cp1252 -*-\n"
         'from {} import setup; setup(name="foo", description="€")\n'.format(mod)
     )
     setup_py.write_bytes(contents.encode("cp1252"))
-    assert _is_setup_py(py.path.local(str(setup_py)))
+    assert _is_setup_py(setup_py)
+
+
+@pytest.mark.parametrize(
+    "name, expected", [("__main__.py", True), ("__init__.py", False)]
+)
+def test_is_main_py(tmp_path: Path, name: str, expected: bool) -> None:
+    dunder_main = tmp_path.joinpath(name)
+    assert _is_main_py(dunder_main) == expected

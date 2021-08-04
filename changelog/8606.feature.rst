@@ -1,0 +1,5 @@
+pytest invocations with ``--fixtures-per-test`` and ``--fixtures`` have been enriched with:
+
+- Fixture location path printed with the fixture name.
+- First section of the fixture's docstring printed under the fixture name.
+- Whole of fixture's docstring printed under the fixture name using ``--verbose`` option.

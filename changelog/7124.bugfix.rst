@@ -1,0 +1,1 @@
+Fixed an issue where ``__main__.py`` would raise an ``ImportError`` when ``--doctest-modules`` was provided.

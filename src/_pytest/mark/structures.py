@@ -28,6 +28,7 @@ from ..compat import final
 from ..compat import NOTSET
 from ..compat import NotSetType
 from _pytest.config import Config
+from _pytest.deprecated import check_ispytest
 from _pytest.outcomes import fail
 from _pytest.warning_types import PytestUnknownMarkWarning
 
@@ -39,10 +40,7 @@ EMPTY_PARAMETERSET_OPTION = "empty_parameter_set_mark"
 
 
 def istestfunc(func) -> bool:
-    return (
-        hasattr(func, "__call__")
-        and getattr(func, "__name__", "<lambda>") != "<lambda>"
-    )
+    return callable(func) and getattr(func, "__name__", "<lambda>") != "<lambda>"
 
 
 def get_empty_parameterset_mark(
@@ -98,9 +96,7 @@ class ParameterSet(
 
         if id is not None:
             if not isinstance(id, str):
-                raise TypeError(
-                    "Expected id to be a string, got {}: {!r}".format(type(id), id)
-                )
+                raise TypeError(f"Expected id to be a string, got {type(id)}: {id!r}")
             id = ascii_escaped(id)
         return cls(values, marks, id)
 
@@ -200,21 +196,38 @@ class ParameterSet(
 
 
 @final
-@attr.s(frozen=True)
+@attr.s(frozen=True, init=False, auto_attribs=True)
 class Mark:
     #: Name of the mark.
-    name = attr.ib(type=str)
+    name: str
     #: Positional arguments of the mark decorator.
-    args = attr.ib(type=Tuple[Any, ...])
+    args: Tuple[Any, ...]
     #: Keyword arguments of the mark decorator.
-    kwargs = attr.ib(type=Mapping[str, Any])
+    kwargs: Mapping[str, Any]
 
     #: Source Mark for ids with parametrize Marks.
-    _param_ids_from = attr.ib(type=Optional["Mark"], default=None, repr=False)
+    _param_ids_from: Optional["Mark"] = attr.ib(default=None, repr=False)
     #: Resolved/generated ids with parametrize Marks.
-    _param_ids_generated = attr.ib(
-        type=Optional[Sequence[str]], default=None, repr=False
-    )
+    _param_ids_generated: Optional[Sequence[str]] = attr.ib(default=None, repr=False)
+
+    def __init__(
+        self,
+        name: str,
+        args: Tuple[Any, ...],
+        kwargs: Mapping[str, Any],
+        param_ids_from: Optional["Mark"] = None,
+        param_ids_generated: Optional[Sequence[str]] = None,
+        *,
+        _ispytest: bool = False,
+    ) -> None:
+        """:meta private:"""
+        check_ispytest(_ispytest)
+        # Weirdness to bypass frozen=True.
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "args", args)
+        object.__setattr__(self, "kwargs", kwargs)
+        object.__setattr__(self, "_param_ids_from", param_ids_from)
+        object.__setattr__(self, "_param_ids_generated", param_ids_generated)
 
     def _has_param_ids(self) -> bool:
         return "ids" in self.kwargs or len(self.args) >= 4
@@ -243,20 +256,21 @@ class Mark:
             self.args + other.args,
             dict(self.kwargs, **other.kwargs),
             param_ids_from=param_ids_from,
+            _ispytest=True,
         )
 
 
 # A generic parameter designating an object to which a Mark may
 # be applied -- a test function (callable) or class.
 # Note: a lambda is not allowed, but this can't be represented.
-_Markable = TypeVar("_Markable", bound=Union[Callable[..., object], type])
+Markable = TypeVar("Markable", bound=Union[Callable[..., object], type])
 
 
-@attr.s
+@attr.s(init=False, auto_attribs=True)
 class MarkDecorator:
     """A decorator for applying a mark on test functions and classes.
 
-    MarkDecorators are created with ``pytest.mark``::
+    ``MarkDecorators`` are created with ``pytest.mark``::
 
         mark1 = pytest.mark.NAME              # Simple MarkDecorator
         mark2 = pytest.mark.NAME(name1=value) # Parametrized MarkDecorator
@@ -267,7 +281,7 @@ class MarkDecorator:
         def test_function():
             pass
 
-    When a MarkDecorator is called it does the following:
+    When a ``MarkDecorator`` is called, it does the following:
 
     1. If called with a single class as its only positional argument and no
        additional keyword arguments, it attaches the mark to the class so it
@@ -276,19 +290,24 @@ class MarkDecorator:
     2. If called with a single function as its only positional argument and
        no additional keyword arguments, it attaches the mark to the function,
        containing all the arguments already stored internally in the
-       MarkDecorator.
+       ``MarkDecorator``.
 
-    3. When called in any other case, it returns a new MarkDecorator instance
-       with the original MarkDecorator's content updated with the arguments
-       passed to this call.
+    3. When called in any other case, it returns a new ``MarkDecorator``
+       instance with the original ``MarkDecorator``'s content updated with
+       the arguments passed to this call.
 
-    Note: The rules above prevent MarkDecorators from storing only a single
-    function or class reference as their positional argument with no
+    Note: The rules above prevent a ``MarkDecorator`` from storing only a
+    single function or class reference as its positional argument with no
     additional keyword or positional arguments. You can work around this by
     using `with_args()`.
     """
 
-    mark = attr.ib(type=Mark, validator=attr.validators.instance_of(Mark))
+    mark: Mark
+
+    def __init__(self, mark: Mark, *, _ispytest: bool = False) -> None:
+        """:meta private:"""
+        check_ispytest(_ispytest)
+        self.mark = mark
 
     @property
     def name(self) -> str:
@@ -307,27 +326,23 @@ class MarkDecorator:
 
     @property
     def markname(self) -> str:
+        """:meta private:"""
         return self.name  # for backward-compat (2.4.1 had this attr)
-
-    def __repr__(self) -> str:
-        return f"<MarkDecorator {self.mark!r}>"
 
     def with_args(self, *args: object, **kwargs: object) -> "MarkDecorator":
         """Return a MarkDecorator with extra arguments added.
 
         Unlike calling the MarkDecorator, with_args() can be used even
         if the sole argument is a callable/class.
-
-        :rtype: MarkDecorator
         """
-        mark = Mark(self.name, args, kwargs)
-        return self.__class__(self.mark.combined_with(mark))
+        mark = Mark(self.name, args, kwargs, _ispytest=True)
+        return MarkDecorator(self.mark.combined_with(mark), _ispytest=True)
 
     # Type ignored because the overloads overlap with an incompatible
     # return type. Not much we can do about that. Thankfully mypy picks
     # the first match so it works out even if we break the rules.
     @overload
-    def __call__(self, arg: _Markable) -> _Markable:  # type: ignore[misc]
+    def __call__(self, arg: Markable) -> Markable:  # type: ignore[misc]
         pass
 
     @overload
@@ -354,18 +369,21 @@ def get_unpacked_marks(obj) -> List[Mark]:
 
 
 def normalize_mark_list(mark_list: Iterable[Union[Mark, MarkDecorator]]) -> List[Mark]:
-    """Normalize marker decorating helpers to mark objects.
-
-    :type List[Union[Mark, Markdecorator]] mark_list:
-    :rtype: List[Mark]
     """
-    extracted = [
-        getattr(mark, "mark", mark) for mark in mark_list
-    ]  # unpack MarkDecorator
-    for mark in extracted:
-        if not isinstance(mark, Mark):
-            raise TypeError(f"got {mark!r} instead of Mark")
-    return [x for x in extracted if isinstance(x, Mark)]
+    Normalize an iterable of Mark or MarkDecorator objects into a list of marks
+    by retrieving the `mark` attribute on MarkDecorator instances.
+
+    :param mark_list: marks to normalize
+    :returns: A new list of the extracted Mark objects
+    """
+
+    def parse_mark(mark: Union[Mark, MarkDecorator]) -> Mark:
+        mark_obj = getattr(mark, "mark", mark)
+        if not isinstance(mark_obj, Mark):
+            raise TypeError(f"got {repr(mark_obj)} instead of Mark")
+        return mark_obj
+
+    return [parse_mark(x) for x in mark_list]
 
 
 def store_mark(obj, mark: Mark) -> None:
@@ -382,11 +400,11 @@ def store_mark(obj, mark: Mark) -> None:
 # Typing for builtin pytest marks. This is cheating; it gives builtin marks
 # special privilege, and breaks modularity. But practicality beats purity...
 if TYPE_CHECKING:
-    from _pytest.fixtures import _Scope
+    from _pytest.scope import _ScopeName
 
     class _SkipMarkDecorator(MarkDecorator):
         @overload  # type: ignore[override,misc]
-        def __call__(self, arg: _Markable) -> _Markable:
+        def __call__(self, arg: Markable) -> Markable:
             ...
 
         @overload
@@ -404,7 +422,7 @@ if TYPE_CHECKING:
 
     class _XfailMarkDecorator(MarkDecorator):
         @overload  # type: ignore[override,misc]
-        def __call__(self, arg: _Markable) -> _Markable:
+        def __call__(self, arg: Markable) -> Markable:
             ...
 
         @overload
@@ -432,20 +450,16 @@ if TYPE_CHECKING:
                     Callable[[Any], Optional[object]],
                 ]
             ] = ...,
-            scope: Optional[_Scope] = ...,
+            scope: Optional[_ScopeName] = ...,
         ) -> MarkDecorator:
             ...
 
     class _UsefixturesMarkDecorator(MarkDecorator):
-        def __call__(  # type: ignore[override]
-            self, *fixtures: str
-        ) -> MarkDecorator:
+        def __call__(self, *fixtures: str) -> MarkDecorator:  # type: ignore[override]
             ...
 
     class _FilterwarningsMarkDecorator(MarkDecorator):
-        def __call__(  # type: ignore[override]
-            self, *filters: str
-        ) -> MarkDecorator:
+        def __call__(self, *filters: str) -> MarkDecorator:  # type: ignore[override]
             ...
 
 
@@ -465,9 +479,6 @@ class MarkGenerator:
     applies a 'slowtest' :class:`Mark` on ``test_function``.
     """
 
-    _config: Optional[Config] = None
-    _markers: Set[str] = set()
-
     # See TYPE_CHECKING above.
     if TYPE_CHECKING:
         skip: _SkipMarkDecorator
@@ -477,7 +488,13 @@ class MarkGenerator:
         usefixtures: _UsefixturesMarkDecorator
         filterwarnings: _FilterwarningsMarkDecorator
 
+    def __init__(self, *, _ispytest: bool = False) -> None:
+        check_ispytest(_ispytest)
+        self._config: Optional[Config] = None
+        self._markers: Set[str] = set()
+
     def __getattr__(self, name: str) -> MarkDecorator:
+        """Generate a new :class:`MarkDecorator` with the given name."""
         if name[0] == "_":
             raise AttributeError("Marker name must NOT start with underscore")
 
@@ -496,7 +513,7 @@ class MarkGenerator:
             # If the name is not in the set of known marks after updating,
             # then it really is time to issue a warning or an error.
             if name not in self._markers:
-                if self._config.option.strict_markers:
+                if self._config.option.strict_markers or self._config.option.strict:
                     fail(
                         f"{name!r} not found in `markers` configuration option",
                         pytrace=False,
@@ -510,15 +527,15 @@ class MarkGenerator:
                 warnings.warn(
                     "Unknown pytest.mark.%s - is this a typo?  You can register "
                     "custom marks to avoid this warning - for details, see "
-                    "https://docs.pytest.org/en/stable/mark.html" % name,
+                    "https://docs.pytest.org/en/stable/how-to/mark.html" % name,
                     PytestUnknownMarkWarning,
                     2,
                 )
 
-        return MarkDecorator(Mark(name, (), {}))
+        return MarkDecorator(Mark(name, (), {}, _ispytest=True), _ispytest=True)
 
 
-MARK_GEN = MarkGenerator()
+MARK_GEN = MarkGenerator(_ispytest=True)
 
 
 @final

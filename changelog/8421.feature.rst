@@ -1,0 +1,1 @@
+:func:`pytest.approx` now works on :class:`~decimal.Decimal` within mappings/dicts and sequences/lists.

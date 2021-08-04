@@ -1,0 +1,1 @@
+Introduce fix to handle precision width in ``log-cli-format`` in turn to fix output coloring for certain formats.

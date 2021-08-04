@@ -1,3 +1,0 @@
-Use strict equality comparison for nonnumeric types in ``approx`` instead of
-raising ``TypeError``.
-This was the undocumented behavior before 3.7, but is now officially a supported feature.

@@ -1,1 +1,0 @@
-Classes which should not be inherited from are now marked ``final class`` in the API reference.

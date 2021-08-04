@@ -16,7 +16,6 @@ from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
-import pytest
 from _pytest import nodes
 from _pytest._io import TerminalWriter
 from _pytest.capture import CaptureManager
@@ -25,18 +24,22 @@ from _pytest.compat import nullcontext
 from _pytest.config import _strtobool
 from _pytest.config import Config
 from _pytest.config import create_terminal_writer
+from _pytest.config import hookimpl
+from _pytest.config import UsageError
 from _pytest.config.argparsing import Parser
+from _pytest.deprecated import check_ispytest
+from _pytest.fixtures import fixture
 from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
-from _pytest.store import StoreKey
+from _pytest.stash import StashKey
 from _pytest.terminal import TerminalReporter
 
 
 DEFAULT_LOG_FORMAT = "%(levelname)-8s %(name)s:%(filename)s:%(lineno)d %(message)s"
 DEFAULT_LOG_DATE_FORMAT = "%H:%M:%S"
 _ANSI_ESCAPE_SEQ = re.compile(r"\x1b\[[\d;]+m")
-caplog_handler_key = StoreKey["LogCaptureHandler"]()
-caplog_records_key = StoreKey[Dict[str, List[logging.LogRecord]]]()
+caplog_handler_key = StashKey["LogCaptureHandler"]()
+caplog_records_key = StashKey[Dict[str, List[logging.LogRecord]]]()
 
 
 def _remove_ansi_escape_sequences(text: str) -> str:
@@ -56,7 +59,7 @@ class ColoredLevelFormatter(logging.Formatter):
         logging.DEBUG: {"purple"},
         logging.NOTSET: set(),
     }
-    LEVELNAME_FMT_REGEX = re.compile(r"%\(levelname\)([+-.]?\d*s)")
+    LEVELNAME_FMT_REGEX = re.compile(r"%\(levelname\)([+-.]?\d*(?:\.\d+)?s)")
 
     def __init__(self, terminalwriter: TerminalWriter, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -344,7 +347,8 @@ class LogCaptureHandler(logging.StreamHandler):
 class LogCaptureFixture:
     """Provides access and control of log capturing."""
 
-    def __init__(self, item: nodes.Node) -> None:
+    def __init__(self, item: nodes.Node, *, _ispytest: bool = False) -> None:
+        check_ispytest(_ispytest)
         self._item = item
         self._initial_handler_level: Optional[int] = None
         # Dict of log name -> log level.
@@ -368,7 +372,7 @@ class LogCaptureFixture:
 
         :rtype: LogCaptureHandler
         """
-        return self._item._store[caplog_handler_key]
+        return self._item.stash[caplog_handler_key]
 
     def get_records(self, when: str) -> List[logging.LogRecord]:
         """Get the logging records for one of the possible test phases.
@@ -381,7 +385,7 @@ class LogCaptureFixture:
 
         .. versionadded:: 3.4
         """
-        return self._item._store[caplog_records_key].get(when, [])
+        return self._item.stash[caplog_records_key].get(when, [])
 
     @property
     def text(self) -> str:
@@ -447,7 +451,7 @@ class LogCaptureFixture:
 
     @contextmanager
     def at_level(
-        self, level: int, logger: Optional[str] = None
+        self, level: Union[int, str], logger: Optional[str] = None
     ) -> Generator[None, None, None]:
         """Context manager that sets the level for capturing of logs. After
         the end of the 'with' statement the level is restored to its original
@@ -468,7 +472,7 @@ class LogCaptureFixture:
             self.handler.setLevel(handler_orig_level)
 
 
-@pytest.fixture
+@fixture
 def caplog(request: FixtureRequest) -> Generator[LogCaptureFixture, None, None]:
     """Access and control log capturing.
 
@@ -480,7 +484,7 @@ def caplog(request: FixtureRequest) -> Generator[LogCaptureFixture, None, None]:
     * caplog.record_tuples   -> list of (logger_name, level, message) tuples
     * caplog.clear()         -> clear captured records and formatted log output string
     """
-    result = LogCaptureFixture(request.node)
+    result = LogCaptureFixture(request.node, _ispytest=True)
     yield result
     result._finalize()
 
@@ -501,7 +505,7 @@ def get_log_level_for_setting(config: Config, *setting_names: str) -> Optional[i
         return int(getattr(logging, log_level, log_level))
     except ValueError as e:
         # Python logging does not recognise this as a logging level
-        raise pytest.UsageError(
+        raise UsageError(
             "'{}' is not recognized as a logging level name for "
             "'{}'. Please consider passing the "
             "logging level num instead.".format(log_level, setting_name)
@@ -509,7 +513,7 @@ def get_log_level_for_setting(config: Config, *setting_names: str) -> Optional[i
 
 
 # run after terminalreporter/capturemanager are configured
-@pytest.hookimpl(trylast=True)
+@hookimpl(trylast=True)
 def pytest_configure(config: Config) -> None:
     config.pluginmanager.register(LoggingPlugin(config), "logging-plugin")
 
@@ -622,7 +626,8 @@ class LoggingPlugin:
             finally:
                 self.log_file_handler.release()
         if old_stream:
-            old_stream.close()
+            # https://github.com/python/typeshed/pull/5663
+            old_stream.close()  # type:ignore[attr-defined]
 
     def _log_cli_enabled(self):
         """Return whether live logging is enabled."""
@@ -639,7 +644,7 @@ class LoggingPlugin:
 
         return True
 
-    @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+    @hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_sessionstart(self) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("sessionstart")
 
@@ -647,7 +652,7 @@ class LoggingPlugin:
             with catching_logs(self.log_file_handler, level=self.log_file_level):
                 yield
 
-    @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+    @hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_collection(self) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("collection")
 
@@ -655,7 +660,7 @@ class LoggingPlugin:
             with catching_logs(self.log_file_handler, level=self.log_file_level):
                 yield
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtestloop(self, session: Session) -> Generator[None, None, None]:
         if session.config.option.collectonly:
             yield
@@ -669,59 +674,61 @@ class LoggingPlugin:
             with catching_logs(self.log_file_handler, level=self.log_file_level):
                 yield  # Run all the tests.
 
-    @pytest.hookimpl
+    @hookimpl
     def pytest_runtest_logstart(self) -> None:
         self.log_cli_handler.reset()
         self.log_cli_handler.set_when("start")
 
-    @pytest.hookimpl
+    @hookimpl
     def pytest_runtest_logreport(self) -> None:
         self.log_cli_handler.set_when("logreport")
 
     def _runtest_for(self, item: nodes.Item, when: str) -> Generator[None, None, None]:
         """Implement the internals of the pytest_runtest_xxx() hooks."""
         with catching_logs(
-            self.caplog_handler, level=self.log_level,
+            self.caplog_handler,
+            level=self.log_level,
         ) as caplog_handler, catching_logs(
-            self.report_handler, level=self.log_level,
+            self.report_handler,
+            level=self.log_level,
         ) as report_handler:
             caplog_handler.reset()
             report_handler.reset()
-            item._store[caplog_records_key][when] = caplog_handler.records
-            item._store[caplog_handler_key] = caplog_handler
+            item.stash[caplog_records_key][when] = caplog_handler.records
+            item.stash[caplog_handler_key] = caplog_handler
 
             yield
 
             log = report_handler.stream.getvalue().strip()
             item.add_report_section(when, "log", log)
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_setup(self, item: nodes.Item) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("setup")
 
         empty: Dict[str, List[logging.LogRecord]] = {}
-        item._store[caplog_records_key] = empty
+        item.stash[caplog_records_key] = empty
         yield from self._runtest_for(item, "setup")
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_call(self, item: nodes.Item) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("call")
 
         yield from self._runtest_for(item, "call")
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_teardown(self, item: nodes.Item) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("teardown")
 
         yield from self._runtest_for(item, "teardown")
-        del item._store[caplog_records_key]
-        del item._store[caplog_handler_key]
+        del item.stash[caplog_records_key]
+        del item.stash[caplog_handler_key]
 
-    @pytest.hookimpl
+    @hookimpl
     def pytest_runtest_logfinish(self) -> None:
         self.log_cli_handler.set_when("finish")
 
-    @pytest.hookimpl(hookwrapper=True, tryfirst=True)
+    @hookimpl(hookwrapper=True, tryfirst=True)
     def pytest_sessionfinish(self) -> Generator[None, None, None]:
         self.log_cli_handler.set_when("sessionfinish")
 
@@ -729,7 +736,7 @@ class LoggingPlugin:
             with catching_logs(self.log_file_handler, level=self.log_file_level):
                 yield
 
-    @pytest.hookimpl
+    @hookimpl
     def pytest_unconfigure(self) -> None:
         # Close the FileHandler explicitly.
         # (logging.shutdown might have lost the weakref?!)

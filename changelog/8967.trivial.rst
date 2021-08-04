@@ -1,0 +1,2 @@
+:func:`pytest_assertion_pass <_pytest.hookspec.pytest_assertion_pass>` is no longer considered experimental and
+future changes to it will be considered more carefully.

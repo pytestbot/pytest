@@ -18,7 +18,8 @@ def freeze_includes() -> List[str]:
 
 
 def _iter_all_modules(
-    package: Union[str, types.ModuleType], prefix: str = "",
+    package: Union[str, types.ModuleType],
+    prefix: str = "",
 ) -> Iterator[str]:
     """Iterate over the names of all modules that can be found in the given
     package, recursively.

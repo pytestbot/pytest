@@ -2,6 +2,7 @@
 import enum
 import functools
 import inspect
+import os
 import re
 import sys
 from contextlib import contextmanager
@@ -18,6 +19,7 @@ from typing import TypeVar
 from typing import Union
 
 import attr
+import py
 
 from _pytest.outcomes import fail
 from _pytest.outcomes import TEST_OUTCOME
@@ -29,6 +31,19 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
+
+#: constant to prepare valuing pylib path replacements/lazy proxies later on
+#  intended for removal in pytest 8.0 or 9.0
+
+# fmt: off
+# intentional space to create a fake difference for the verification
+LEGACY_PATH = py.path. local
+# fmt: on
+
+
+def legacy_path(path: Union[str, "os.PathLike[str]"]) -> LEGACY_PATH:
+    """Internal wrapper to prepare lazy proxies for legacy_path instances"""
+    return LEGACY_PATH(path)
 
 
 # fmt: off
@@ -143,7 +158,8 @@ def getfuncargnames(
         parameters = signature(function).parameters
     except (ValueError, TypeError) as e:
         fail(
-            f"Could not determine arguments of {function!r}: {e}", pytrace=False,
+            f"Could not determine arguments of {function!r}: {e}",
+            pytrace=False,
         )
 
     arg_names = tuple(
@@ -162,7 +178,12 @@ def getfuncargnames(
     # it's passed as an unbound method or function, remove the first
     # parameter name.
     if is_method or (
-        cls and not isinstance(cls.__dict__.get(name, None), staticmethod)
+        # Not using `getattr` because we don't want to resolve the staticmethod.
+        # Not using `cls.__dict__` because we want to check the entire MRO.
+        cls
+        and not isinstance(
+            inspect.getattr_static(cls, name, default=None), staticmethod
+        )
     ):
         arg_names = arg_names[1:]
     # Remove any names that will be replaced with mocks.
@@ -397,4 +418,4 @@ else:
 #
 # This also work for Enums (if you use `is` to compare) and Literals.
 def assert_never(value: "NoReturn") -> "NoReturn":
-    assert False, "Unhandled value: {} ({})".format(value, type(value).__name__)
+    assert False, f"Unhandled value: {value} ({type(value).__name__})"

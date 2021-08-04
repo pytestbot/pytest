@@ -1,1 +1,0 @@
-``_pytest.config.argparsing.Parser.addini()`` accepts explicit ``None`` and ``"string"``.

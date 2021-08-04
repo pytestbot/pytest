@@ -12,8 +12,8 @@ pythonlist = ["python3.5", "python3.6", "python3.7"]
 
 
 @pytest.fixture(params=pythonlist)
-def python1(request, tmpdir):
-    picklefile = tmpdir.join("data.pickle")
+def python1(request, tmp_path):
+    picklefile = tmp_path / "data.pickle"
     return Python(request.param, picklefile)
 
 
@@ -30,8 +30,8 @@ class Python:
         self.picklefile = picklefile
 
     def dumps(self, obj):
-        dumpfile = self.picklefile.dirpath("dump.py")
-        dumpfile.write(
+        dumpfile = self.picklefile.with_name("dump.py")
+        dumpfile.write_text(
             textwrap.dedent(
                 r"""
                 import pickle
@@ -46,8 +46,8 @@ class Python:
         subprocess.check_call((self.pythonpath, str(dumpfile)))
 
     def load_and_is_true(self, expression):
-        loadfile = self.picklefile.dirpath("load.py")
-        loadfile.write(
+        loadfile = self.picklefile.with_name("load.py")
+        loadfile.write_text(
             textwrap.dedent(
                 r"""
                 import pickle

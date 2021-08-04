@@ -1,0 +1,1 @@
+Switch TOML parser from ``toml`` to ``tomli`` for TOML v1.0.0 support in ``pyproject.toml``.

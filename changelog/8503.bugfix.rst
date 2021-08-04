@@ -1,0 +1,4 @@
+:meth:`pytest.MonkeyPatch.syspath_prepend` no longer fails when
+``setuptools`` is not installed.
+It now only calls :func:`pkg_resources.fixup_namespace_packages` if
+``pkg_resources`` was previously imported, because it is not needed otherwise.

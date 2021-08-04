@@ -1,0 +1,2 @@
+:ref:`--import-mode=importlib <import-modes>` now works with features that
+depend on modules being on :py:data:`sys.modules`, such as :mod:`pickle` and :mod:`dataclasses`.

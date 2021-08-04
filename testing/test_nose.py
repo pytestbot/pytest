@@ -1,12 +1,13 @@
 import pytest
+from _pytest.pytester import Pytester
 
 
 def setup_module(mod):
     mod.nose = pytest.importorskip("nose")
 
 
-def test_nose_setup(testdir):
-    p = testdir.makepyfile(
+def test_nose_setup(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         values = []
         from nose.tools import with_setup
@@ -22,11 +23,11 @@ def test_nose_setup(testdir):
         test_hello.teardown = lambda: values.append(2)
     """
     )
-    result = testdir.runpytest(p, "-p", "nose")
+    result = pytester.runpytest(p, "-p", "nose")
     result.assert_outcomes(passed=2)
 
 
-def test_setup_func_with_setup_decorator():
+def test_setup_func_with_setup_decorator() -> None:
     from _pytest.nose import call_optional
 
     values = []
@@ -40,7 +41,7 @@ def test_setup_func_with_setup_decorator():
     assert not values
 
 
-def test_setup_func_not_callable():
+def test_setup_func_not_callable() -> None:
     from _pytest.nose import call_optional
 
     class A:
@@ -49,8 +50,8 @@ def test_setup_func_not_callable():
     call_optional(A(), "f")
 
 
-def test_nose_setup_func(testdir):
-    p = testdir.makepyfile(
+def test_nose_setup_func(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         from nose.tools import with_setup
 
@@ -75,12 +76,12 @@ def test_nose_setup_func(testdir):
 
     """
     )
-    result = testdir.runpytest(p, "-p", "nose")
+    result = pytester.runpytest(p, "-p", "nose")
     result.assert_outcomes(passed=2)
 
 
-def test_nose_setup_func_failure(testdir):
-    p = testdir.makepyfile(
+def test_nose_setup_func_failure(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         from nose.tools import with_setup
 
@@ -99,12 +100,12 @@ def test_nose_setup_func_failure(testdir):
 
     """
     )
-    result = testdir.runpytest(p, "-p", "nose")
+    result = pytester.runpytest(p, "-p", "nose")
     result.stdout.fnmatch_lines(["*TypeError: <lambda>()*"])
 
 
-def test_nose_setup_func_failure_2(testdir):
-    testdir.makepyfile(
+def test_nose_setup_func_failure_2(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         values = []
 
@@ -118,13 +119,13 @@ def test_nose_setup_func_failure_2(testdir):
         test_hello.teardown = my_teardown
     """
     )
-    reprec = testdir.inline_run()
+    reprec = pytester.inline_run()
     reprec.assertoutcome(passed=1)
 
 
-def test_nose_setup_partial(testdir):
+def test_nose_setup_partial(pytester: Pytester) -> None:
     pytest.importorskip("functools")
-    p = testdir.makepyfile(
+    p = pytester.makepyfile(
         """
         from functools import partial
 
@@ -153,12 +154,12 @@ def test_nose_setup_partial(testdir):
         test_hello.teardown = my_teardown_partial
     """
     )
-    result = testdir.runpytest(p, "-p", "nose")
+    result = pytester.runpytest(p, "-p", "nose")
     result.stdout.fnmatch_lines(["*2 passed*"])
 
 
-def test_module_level_setup(testdir):
-    testdir.makepyfile(
+def test_module_level_setup(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         from nose.tools import with_setup
         items = {}
@@ -184,12 +185,12 @@ def test_module_level_setup(testdir):
             assert 1 not in items
     """
     )
-    result = testdir.runpytest("-p", "nose")
+    result = pytester.runpytest("-p", "nose")
     result.stdout.fnmatch_lines(["*2 passed*"])
 
 
-def test_nose_style_setup_teardown(testdir):
-    testdir.makepyfile(
+def test_nose_style_setup_teardown(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         values = []
 
@@ -206,12 +207,56 @@ def test_nose_style_setup_teardown(testdir):
             assert values == [1]
         """
     )
-    result = testdir.runpytest("-p", "nose")
+    result = pytester.runpytest("-p", "nose")
     result.stdout.fnmatch_lines(["*2 passed*"])
 
 
-def test_nose_setup_ordering(testdir):
-    testdir.makepyfile(
+def test_fixtures_nose_setup_issue8394(pytester: Pytester) -> None:
+    pytester.makepyfile(
+        """
+        def setup_module():
+            pass
+
+        def teardown_module():
+            pass
+
+        def setup_function(func):
+            pass
+
+        def teardown_function(func):
+            pass
+
+        def test_world():
+            pass
+
+        class Test(object):
+            def setup_class(cls):
+                pass
+
+            def teardown_class(cls):
+                pass
+
+            def setup_method(self, meth):
+                pass
+
+            def teardown_method(self, meth):
+                pass
+
+            def test_method(self): pass
+        """
+    )
+    match = "*no docstring available*"
+    result = pytester.runpytest("--fixtures")
+    assert result.ret == 0
+    result.stdout.no_fnmatch_line(match)
+
+    result = pytester.runpytest("--fixtures", "-v")
+    assert result.ret == 0
+    result.stdout.fnmatch_lines([match, match, match, match])
+
+
+def test_nose_setup_ordering(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         def setup_module(mod):
             mod.visited = True
@@ -223,14 +268,14 @@ def test_nose_setup_ordering(testdir):
                 pass
         """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["*1 passed*"])
 
 
-def test_apiwrapper_problem_issue260(testdir):
+def test_apiwrapper_problem_issue260(pytester: Pytester) -> None:
     # this would end up trying a call an optional teardown on the class
     # for plain unittests we don't want nose behaviour
-    testdir.makepyfile(
+    pytester.makepyfile(
         """
         import unittest
         class TestCase(unittest.TestCase):
@@ -248,14 +293,14 @@ def test_apiwrapper_problem_issue260(testdir):
                 pass
         """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.assert_outcomes(passed=1)
 
 
-def test_setup_teardown_linking_issue265(testdir):
+def test_setup_teardown_linking_issue265(pytester: Pytester) -> None:
     # we accidentally didn't integrate nose setupstate with normal setupstate
     # this test ensures that won't happen again
-    testdir.makepyfile(
+    pytester.makepyfile(
         '''
         import pytest
 
@@ -276,12 +321,12 @@ def test_setup_teardown_linking_issue265(testdir):
                 raise Exception("should not call teardown for skipped tests")
         '''
     )
-    reprec = testdir.runpytest()
+    reprec = pytester.runpytest()
     reprec.assert_outcomes(passed=1, skipped=1)
 
 
-def test_SkipTest_during_collection(testdir):
-    p = testdir.makepyfile(
+def test_SkipTest_during_collection(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         import nose
         raise nose.SkipTest("during collection")
@@ -289,12 +334,12 @@ def test_SkipTest_during_collection(testdir):
             assert False
         """
     )
-    result = testdir.runpytest(p)
-    result.assert_outcomes(skipped=1)
+    result = pytester.runpytest(p)
+    result.assert_outcomes(skipped=1, warnings=1)
 
 
-def test_SkipTest_in_test(testdir):
-    testdir.makepyfile(
+def test_SkipTest_in_test(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         import nose
 
@@ -302,12 +347,12 @@ def test_SkipTest_in_test(testdir):
             raise nose.SkipTest("in test")
         """
     )
-    reprec = testdir.inline_run()
+    reprec = pytester.inline_run()
     reprec.assertoutcome(skipped=1)
 
 
-def test_istest_function_decorator(testdir):
-    p = testdir.makepyfile(
+def test_istest_function_decorator(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         import nose.tools
         @nose.tools.istest
@@ -315,12 +360,12 @@ def test_istest_function_decorator(testdir):
             pass
         """
     )
-    result = testdir.runpytest(p)
+    result = pytester.runpytest(p)
     result.assert_outcomes(passed=1)
 
 
-def test_nottest_function_decorator(testdir):
-    testdir.makepyfile(
+def test_nottest_function_decorator(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         import nose.tools
         @nose.tools.nottest
@@ -328,14 +373,14 @@ def test_nottest_function_decorator(testdir):
             pass
         """
     )
-    reprec = testdir.inline_run()
+    reprec = pytester.inline_run()
     assert not reprec.getfailedcollections()
     calls = reprec.getreports("pytest_runtest_logreport")
     assert not calls
 
 
-def test_istest_class_decorator(testdir):
-    p = testdir.makepyfile(
+def test_istest_class_decorator(pytester: Pytester) -> None:
+    p = pytester.makepyfile(
         """
         import nose.tools
         @nose.tools.istest
@@ -344,12 +389,12 @@ def test_istest_class_decorator(testdir):
                 pass
         """
     )
-    result = testdir.runpytest(p)
+    result = pytester.runpytest(p)
     result.assert_outcomes(passed=1)
 
 
-def test_nottest_class_decorator(testdir):
-    testdir.makepyfile(
+def test_nottest_class_decorator(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         import nose.tools
         @nose.tools.nottest
@@ -358,14 +403,14 @@ def test_nottest_class_decorator(testdir):
                 pass
         """
     )
-    reprec = testdir.inline_run()
+    reprec = pytester.inline_run()
     assert not reprec.getfailedcollections()
     calls = reprec.getreports("pytest_runtest_logreport")
     assert not calls
 
 
-def test_skip_test_with_unicode(testdir):
-    testdir.makepyfile(
+def test_skip_test_with_unicode(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """\
         import unittest
         class TestClass():
@@ -373,12 +418,12 @@ def test_skip_test_with_unicode(testdir):
                 raise unittest.SkipTest('😊')
         """
     )
-    result = testdir.runpytest()
+    result = pytester.runpytest()
     result.stdout.fnmatch_lines(["* 1 skipped *"])
 
 
-def test_raises(testdir):
-    testdir.makepyfile(
+def test_raises(pytester: Pytester) -> None:
+    pytester.makepyfile(
         """
         from nose.tools import raises
 
@@ -395,7 +440,7 @@ def test_raises(testdir):
             raise BaseException
         """
     )
-    result = testdir.runpytest("-vv")
+    result = pytester.runpytest("-vv")
     result.stdout.fnmatch_lines(
         [
             "test_raises.py::test_raises_runtimeerror PASSED*",

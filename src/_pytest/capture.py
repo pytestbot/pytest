@@ -17,12 +17,15 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
-import pytest
 from _pytest.compat import final
 from _pytest.config import Config
+from _pytest.config import hookimpl
 from _pytest.config.argparsing import Parser
+from _pytest.deprecated import check_ispytest
+from _pytest.fixtures import fixture
 from _pytest.fixtures import SubRequest
 from _pytest.nodes import Collector
+from _pytest.nodes import File
 from _pytest.nodes import Item
 
 if TYPE_CHECKING:
@@ -145,7 +148,7 @@ def _py36_windowsconsoleio_workaround(stream: TextIO) -> None:
     sys.stderr = _reopen_stdio(sys.stderr, "wb")
 
 
-@pytest.hookimpl(hookwrapper=True)
+@hookimpl(hookwrapper=True)
 def pytest_load_initial_conftests(early_config: Config):
     ns = early_config.known_args_namespace
     if ns.capture == "fd":
@@ -360,7 +363,7 @@ class FDCaptureBinary:
         except OSError:
             # FD capturing is conceptually simple -- create a temporary file,
             # redirect the FD to it, redirect back when done. But when the
-            # target FD is invalid it throws a wrench into this loveley scheme.
+            # target FD is invalid it throws a wrench into this lovely scheme.
             #
             # Tests themselves shouldn't care if the FD is valid, FD capturing
             # should work regardless of external circumstances. So falling back
@@ -553,7 +556,11 @@ class MultiCapture(Generic[AnyStr]):
 
     def __repr__(self) -> str:
         return "<MultiCapture out={!r} err={!r} in_={!r} _state={!r} _in_suspended={!r}>".format(
-            self.out, self.err, self.in_, self._state, self._in_suspended,
+            self.out,
+            self.err,
+            self.in_,
+            self._state,
+            self._in_suspended,
         )
 
     def start_capturing(self) -> None:
@@ -611,14 +618,8 @@ class MultiCapture(Generic[AnyStr]):
         return self._state == "started"
 
     def readouterr(self) -> CaptureResult[AnyStr]:
-        if self.out:
-            out = self.out.snap()
-        else:
-            out = ""
-        if self.err:
-            err = self.err.snap()
-        else:
-            err = ""
+        out = self.out.snap() if self.out else ""
+        err = self.err.snap() if self.err else ""
         return CaptureResult(out, err)
 
 
@@ -784,9 +785,9 @@ class CaptureManager:
 
     # Hooks
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_make_collect_report(self, collector: Collector):
-        if isinstance(collector, pytest.File):
+        if isinstance(collector, File):
             self.resume_global_capture()
             outcome = yield
             self.suspend_global_capture()
@@ -799,35 +800,38 @@ class CaptureManager:
         else:
             yield
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_setup(self, item: Item) -> Generator[None, None, None]:
         with self.item_capture("setup", item):
             yield
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_call(self, item: Item) -> Generator[None, None, None]:
         with self.item_capture("call", item):
             yield
 
-    @pytest.hookimpl(hookwrapper=True)
+    @hookimpl(hookwrapper=True)
     def pytest_runtest_teardown(self, item: Item) -> Generator[None, None, None]:
         with self.item_capture("teardown", item):
             yield
 
-    @pytest.hookimpl(tryfirst=True)
+    @hookimpl(tryfirst=True)
     def pytest_keyboard_interrupt(self) -> None:
         self.stop_global_capturing()
 
-    @pytest.hookimpl(tryfirst=True)
+    @hookimpl(tryfirst=True)
     def pytest_internalerror(self) -> None:
         self.stop_global_capturing()
 
 
 class CaptureFixture(Generic[AnyStr]):
-    """Object returned by the :py:func:`capsys`, :py:func:`capsysbinary`,
-    :py:func:`capfd` and :py:func:`capfdbinary` fixtures."""
+    """Object returned by the :fixture:`capsys`, :fixture:`capsysbinary`,
+    :fixture:`capfd` and :fixture:`capfdbinary` fixtures."""
 
-    def __init__(self, captureclass, request: SubRequest) -> None:
+    def __init__(
+        self, captureclass, request: SubRequest, *, _ispytest: bool = False
+    ) -> None:
+        check_ispytest(_ispytest)
         self.captureclass = captureclass
         self.request = request
         self._capture: Optional[MultiCapture[AnyStr]] = None
@@ -837,7 +841,9 @@ class CaptureFixture(Generic[AnyStr]):
     def _start(self) -> None:
         if self._capture is None:
             self._capture = MultiCapture(
-                in_=None, out=self.captureclass(1), err=self.captureclass(2),
+                in_=None,
+                out=self.captureclass(1),
+                err=self.captureclass(2),
             )
             self._capture.start_capturing()
 
@@ -893,7 +899,7 @@ class CaptureFixture(Generic[AnyStr]):
 # The fixtures.
 
 
-@pytest.fixture
+@fixture
 def capsys(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     """Enable text capturing of writes to ``sys.stdout`` and ``sys.stderr``.
 
@@ -902,7 +908,7 @@ def capsys(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     ``out`` and ``err`` will be ``text`` objects.
     """
     capman = request.config.pluginmanager.getplugin("capturemanager")
-    capture_fixture = CaptureFixture[str](SysCapture, request)
+    capture_fixture = CaptureFixture[str](SysCapture, request, _ispytest=True)
     capman.set_fixture(capture_fixture)
     capture_fixture._start()
     yield capture_fixture
@@ -910,7 +916,7 @@ def capsys(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     capman.unset_fixture()
 
 
-@pytest.fixture
+@fixture
 def capsysbinary(request: SubRequest) -> Generator[CaptureFixture[bytes], None, None]:
     """Enable bytes capturing of writes to ``sys.stdout`` and ``sys.stderr``.
 
@@ -919,7 +925,7 @@ def capsysbinary(request: SubRequest) -> Generator[CaptureFixture[bytes], None, 
     ``out`` and ``err`` will be ``bytes`` objects.
     """
     capman = request.config.pluginmanager.getplugin("capturemanager")
-    capture_fixture = CaptureFixture[bytes](SysCaptureBinary, request)
+    capture_fixture = CaptureFixture[bytes](SysCaptureBinary, request, _ispytest=True)
     capman.set_fixture(capture_fixture)
     capture_fixture._start()
     yield capture_fixture
@@ -927,7 +933,7 @@ def capsysbinary(request: SubRequest) -> Generator[CaptureFixture[bytes], None, 
     capman.unset_fixture()
 
 
-@pytest.fixture
+@fixture
 def capfd(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     """Enable text capturing of writes to file descriptors ``1`` and ``2``.
 
@@ -936,7 +942,7 @@ def capfd(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     ``out`` and ``err`` will be ``text`` objects.
     """
     capman = request.config.pluginmanager.getplugin("capturemanager")
-    capture_fixture = CaptureFixture[str](FDCapture, request)
+    capture_fixture = CaptureFixture[str](FDCapture, request, _ispytest=True)
     capman.set_fixture(capture_fixture)
     capture_fixture._start()
     yield capture_fixture
@@ -944,7 +950,7 @@ def capfd(request: SubRequest) -> Generator[CaptureFixture[str], None, None]:
     capman.unset_fixture()
 
 
-@pytest.fixture
+@fixture
 def capfdbinary(request: SubRequest) -> Generator[CaptureFixture[bytes], None, None]:
     """Enable bytes capturing of writes to file descriptors ``1`` and ``2``.
 
@@ -953,7 +959,7 @@ def capfdbinary(request: SubRequest) -> Generator[CaptureFixture[bytes], None, N
     ``out`` and ``err`` will be ``byte`` objects.
     """
     capman = request.config.pluginmanager.getplugin("capturemanager")
-    capture_fixture = CaptureFixture[bytes](FDCaptureBinary, request)
+    capture_fixture = CaptureFixture[bytes](FDCaptureBinary, request, _ispytest=True)
     capman.set_fixture(capture_fixture)
     capture_fixture._start()
     yield capture_fixture

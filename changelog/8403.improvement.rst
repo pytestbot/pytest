@@ -1,0 +1,5 @@
+By default, pytest will truncate long strings in assert errors so they don't clutter the output too much,
+currently at ``240`` characters by default.
+
+However, in some cases the longer output helps, or is even crucial, to diagnose a failure. Using ``-v`` will
+now increase the truncation threshold to ``2400`` characters, and ``-vv`` or higher will disable truncation entirely.

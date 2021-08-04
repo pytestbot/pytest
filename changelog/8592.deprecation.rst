@@ -1,0 +1,1 @@
+:func:`pytest_cmdline_preparse <_pytest.hookspec.pytest_cmdline_preparse>` has been officially deprecated.  It will be removed in a future release.  Use :func:`pytest_load_initial_conftests <_pytest.hookspec.pytest_load_initial_conftests>` instead.

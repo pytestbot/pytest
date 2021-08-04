@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Sequence
 from typing import Union
 
@@ -6,24 +5,24 @@ import pytest
 from _pytest._code.code import ExceptionChainRepr
 from _pytest._code.code import ExceptionRepr
 from _pytest.config import Config
-from _pytest.pytester import Testdir
+from _pytest.pytester import Pytester
 from _pytest.reports import CollectReport
 from _pytest.reports import TestReport
 
 
 class TestReportSerialization:
-    def test_xdist_longrepr_to_str_issue_241(self, testdir: Testdir) -> None:
+    def test_xdist_longrepr_to_str_issue_241(self, pytester: Pytester) -> None:
         """Regarding issue pytest-xdist#241.
 
         This test came originally from test_remote.py in xdist (ca03269).
         """
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def test_a(): assert False
             def test_b(): pass
         """
         )
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         reports = reprec.getreports("pytest_runtest_logreport")
         assert len(reports) == 6
         test_a_call = reports[1]
@@ -35,12 +34,12 @@ class TestReportSerialization:
         assert test_b_call.outcome == "passed"
         assert test_b_call._to_json()["longrepr"] is None
 
-    def test_xdist_report_longrepr_reprcrash_130(self, testdir: Testdir) -> None:
+    def test_xdist_report_longrepr_reprcrash_130(self, pytester: Pytester) -> None:
         """Regarding issue pytest-xdist#130
 
         This test came originally from test_remote.py in xdist (ca03269).
         """
-        reprec = testdir.inline_runsource(
+        reprec = pytester.inline_runsource(
             """
                     def test_fail():
                         assert False, 'Expected Message'
@@ -74,14 +73,14 @@ class TestReportSerialization:
         # Missing section attribute PR171
         assert added_section in a.longrepr.sections
 
-    def test_reprentries_serialization_170(self, testdir: Testdir) -> None:
+    def test_reprentries_serialization_170(self, pytester: Pytester) -> None:
         """Regarding issue pytest-xdist#170
 
         This test came originally from test_remote.py in xdist (ca03269).
         """
         from _pytest._code.code import ReprEntry
 
-        reprec = testdir.inline_runsource(
+        reprec = pytester.inline_runsource(
             """
                             def test_repr_entry():
                                 x = 0
@@ -120,14 +119,14 @@ class TestReportSerialization:
             assert rep_entry.reprlocals.lines == a_entry.reprlocals.lines
             assert rep_entry.style == a_entry.style
 
-    def test_reprentries_serialization_196(self, testdir: Testdir) -> None:
+    def test_reprentries_serialization_196(self, pytester: Pytester) -> None:
         """Regarding issue pytest-xdist#196
 
         This test came originally from test_remote.py in xdist (ca03269).
         """
         from _pytest._code.code import ReprEntryNative
 
-        reprec = testdir.inline_runsource(
+        reprec = pytester.inline_runsource(
             """
                             def test_repr_entry_native():
                                 x = 0
@@ -149,9 +148,9 @@ class TestReportSerialization:
             assert isinstance(rep_entries[i], ReprEntryNative)
             assert rep_entries[i].lines == a_entries[i].lines
 
-    def test_itemreport_outcomes(self, testdir: Testdir) -> None:
+    def test_itemreport_outcomes(self, pytester: Pytester) -> None:
         # This test came originally from test_remote.py in xdist (ca03269).
-        reprec = testdir.inline_runsource(
+        reprec = pytester.inline_runsource(
             """
             import pytest
             def test_pass(): pass
@@ -183,9 +182,9 @@ class TestReportSerialization:
             if rep.failed:
                 assert newrep.longreprtext == rep.longreprtext
 
-    def test_collectreport_passed(self, testdir: Testdir) -> None:
+    def test_collectreport_passed(self, pytester: Pytester) -> None:
         """This test came originally from test_remote.py in xdist (ca03269)."""
-        reprec = testdir.inline_runsource("def test_func(): pass")
+        reprec = pytester.inline_runsource("def test_func(): pass")
         reports = reprec.getreports("pytest_collectreport")
         for rep in reports:
             d = rep._to_json()
@@ -194,9 +193,9 @@ class TestReportSerialization:
             assert newrep.failed == rep.failed
             assert newrep.skipped == rep.skipped
 
-    def test_collectreport_fail(self, testdir: Testdir) -> None:
+    def test_collectreport_fail(self, pytester: Pytester) -> None:
         """This test came originally from test_remote.py in xdist (ca03269)."""
-        reprec = testdir.inline_runsource("qwe abc")
+        reprec = pytester.inline_runsource("qwe abc")
         reports = reprec.getreports("pytest_collectreport")
         assert reports
         for rep in reports:
@@ -208,9 +207,9 @@ class TestReportSerialization:
             if rep.failed:
                 assert newrep.longrepr == str(rep.longrepr)
 
-    def test_extended_report_deserialization(self, testdir: Testdir) -> None:
+    def test_extended_report_deserialization(self, pytester: Pytester) -> None:
         """This test came originally from test_remote.py in xdist (ca03269)."""
-        reprec = testdir.inline_runsource("qwe abc")
+        reprec = pytester.inline_runsource("qwe abc")
         reports = reprec.getreports("pytest_collectreport")
         assert reports
         for rep in reports:
@@ -224,33 +223,41 @@ class TestReportSerialization:
             if rep.failed:
                 assert newrep.longrepr == str(rep.longrepr)
 
-    def test_paths_support(self, testdir: Testdir) -> None:
-        """Report attributes which are py.path or pathlib objects should become strings."""
-        testdir.makepyfile(
+    def test_paths_support(self, pytester: Pytester) -> None:
+        """Report attributes which are path-like should become strings."""
+        pytester.makepyfile(
             """
             def test_a():
                 assert False
         """
         )
-        reprec = testdir.inline_run()
+
+        class MyPathLike:
+            def __init__(self, path: str) -> None:
+                self.path = path
+
+            def __fspath__(self) -> str:
+                return self.path
+
+        reprec = pytester.inline_run()
         reports = reprec.getreports("pytest_runtest_logreport")
         assert len(reports) == 3
         test_a_call = reports[1]
-        test_a_call.path1 = testdir.tmpdir  # type: ignore[attr-defined]
-        test_a_call.path2 = Path(testdir.tmpdir)  # type: ignore[attr-defined]
+        test_a_call.path1 = MyPathLike(str(pytester.path))  # type: ignore[attr-defined]
+        test_a_call.path2 = pytester.path  # type: ignore[attr-defined]
         data = test_a_call._to_json()
-        assert data["path1"] == str(testdir.tmpdir)
-        assert data["path2"] == str(testdir.tmpdir)
+        assert data["path1"] == str(pytester.path)
+        assert data["path2"] == str(pytester.path)
 
-    def test_deserialization_failure(self, testdir: Testdir) -> None:
+    def test_deserialization_failure(self, pytester: Pytester) -> None:
         """Check handling of failure during deserialization of report types."""
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def test_a():
                 assert False
         """
         )
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         reports = reprec.getreports("pytest_runtest_logreport")
         assert len(reports) == 3
         test_a_call = reports[1]
@@ -265,9 +272,11 @@ class TestReportSerialization:
             TestReport._from_json(data)
 
     @pytest.mark.parametrize("report_class", [TestReport, CollectReport])
-    def test_chained_exceptions(self, testdir: Testdir, tw_mock, report_class) -> None:
+    def test_chained_exceptions(
+        self, pytester: Pytester, tw_mock, report_class
+    ) -> None:
         """Check serialization/deserialization of report objects containing chained exceptions (#5786)"""
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def foo():
                 raise ValueError('value error')
@@ -283,7 +292,7 @@ class TestReportSerialization:
             )
         )
 
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         if report_class is TestReport:
             reports: Union[
                 Sequence[TestReport], Sequence[CollectReport]
@@ -338,14 +347,14 @@ class TestReportSerialization:
         # elsewhere and we do check the contents of the longrepr object after loading it.
         loaded_report.longrepr.toterminal(tw_mock)
 
-    def test_chained_exceptions_no_reprcrash(self, testdir: Testdir, tw_mock) -> None:
+    def test_chained_exceptions_no_reprcrash(self, pytester: Pytester, tw_mock) -> None:
         """Regression test for tracebacks without a reprcrash (#5971)
 
         This happens notably on exceptions raised by multiprocess.pool: the exception transfer
         from subprocess to main process creates an artificial exception, which ExceptionInfo
         can't obtain the ReprFileLocation from.
         """
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             from concurrent.futures import ProcessPoolExecutor
 
@@ -358,8 +367,8 @@ class TestReportSerialization:
         """
         )
 
-        testdir.syspathinsert()
-        reprec = testdir.inline_run()
+        pytester.syspathinsert()
+        reprec = pytester.inline_run()
 
         reports = reprec.getreports("pytest_runtest_logreport")
 
@@ -396,12 +405,13 @@ class TestReportSerialization:
         loaded_report.longrepr.toterminal(tw_mock)
 
     def test_report_prevent_ConftestImportFailure_hiding_exception(
-        self, testdir: Testdir
+        self, pytester: Pytester
     ) -> None:
-        sub_dir = testdir.tmpdir.join("ns").ensure_dir()
-        sub_dir.join("conftest").new(ext=".py").write("import unknown")
+        sub_dir = pytester.path.joinpath("ns")
+        sub_dir.mkdir()
+        sub_dir.joinpath("conftest.py").write_text("import unknown")
 
-        result = testdir.runpytest_subprocess(".")
+        result = pytester.runpytest_subprocess(".")
         result.stdout.fnmatch_lines(["E   *Error: No module named 'unknown'"])
         result.stdout.no_fnmatch_line("ERROR  - *ConftestImportFailure*")
 
@@ -409,14 +419,14 @@ class TestReportSerialization:
 class TestHooks:
     """Test that the hooks are working correctly for plugins"""
 
-    def test_test_report(self, testdir: Testdir, pytestconfig: Config) -> None:
-        testdir.makepyfile(
+    def test_test_report(self, pytester: Pytester, pytestconfig: Config) -> None:
+        pytester.makepyfile(
             """
             def test_a(): assert False
             def test_b(): pass
         """
         )
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         reports = reprec.getreports("pytest_runtest_logreport")
         assert len(reports) == 6
         for rep in reports:
@@ -431,14 +441,14 @@ class TestHooks:
             assert new_rep.when == rep.when
             assert new_rep.outcome == rep.outcome
 
-    def test_collect_report(self, testdir: Testdir, pytestconfig: Config) -> None:
-        testdir.makepyfile(
+    def test_collect_report(self, pytester: Pytester, pytestconfig: Config) -> None:
+        pytester.makepyfile(
             """
             def test_a(): assert False
             def test_b(): pass
         """
         )
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         reports = reprec.getreports("pytest_collectreport")
         assert len(reports) == 2
         for rep in reports:
@@ -457,14 +467,14 @@ class TestHooks:
         "hook_name", ["pytest_runtest_logreport", "pytest_collectreport"]
     )
     def test_invalid_report_types(
-        self, testdir: Testdir, pytestconfig: Config, hook_name: str
+        self, pytester: Pytester, pytestconfig: Config, hook_name: str
     ) -> None:
-        testdir.makepyfile(
+        pytester.makepyfile(
             """
             def test_a(): pass
             """
         )
-        reprec = testdir.inline_run()
+        reprec = pytester.inline_run()
         reports = reprec.getreports(hook_name)
         assert reports
         rep = reports[0]

@@ -1,0 +1,1 @@
+Add automatically generated :ref:`plugin-list`. The list is updated on a periodic schedule.

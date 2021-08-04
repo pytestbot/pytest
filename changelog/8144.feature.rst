@@ -1,0 +1,7 @@
+The following hooks now receive an additional ``pathlib.Path`` argument, equivalent to an existing ``py.path.local`` argument:
+
+- :func:`pytest_ignore_collect <_pytest.hookspec.pytest_ignore_collect>` - The ``fspath`` parameter (equivalent to existing ``path`` parameter).
+- :func:`pytest_collect_file <_pytest.hookspec.pytest_collect_file>` - The ``fspath`` parameter (equivalent to existing ``path`` parameter).
+- :func:`pytest_pycollect_makemodule <_pytest.hookspec.pytest_pycollect_makemodule>` - The ``fspath`` parameter (equivalent to existing ``path`` parameter).
+- :func:`pytest_report_header <_pytest.hookspec.pytest_report_header>` - The ``startpath`` parameter (equivalent to existing ``startdir`` parameter).
+- :func:`pytest_report_collectionfinish <_pytest.hookspec.pytest_report_collectionfinish>` - The ``startpath`` parameter (equivalent to existing ``startdir`` parameter).

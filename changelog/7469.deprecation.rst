@@ -1,0 +1,12 @@
+Directly constructing the following classes is now deprecated:
+
+- ``_pytest.mark.structures.Mark``
+- ``_pytest.mark.structures.MarkDecorator``
+- ``_pytest.mark.structures.MarkGenerator``
+- ``_pytest.python.Metafunc``
+- ``_pytest.runner.CallInfo``
+- ``_pytest._code.ExceptionInfo``
+- ``_pytest.config.argparsing.Parser``
+- ``_pytest.config.argparsing.OptionGroup``
+
+These have always been considered private, but now issue a deprecation warning, which may become a hard error in pytest 8.0.0.

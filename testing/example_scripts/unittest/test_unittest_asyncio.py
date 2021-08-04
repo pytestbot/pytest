@@ -1,5 +1,5 @@
 from typing import List
-from unittest import IsolatedAsyncioTestCase  # type: ignore
+from unittest import IsolatedAsyncioTestCase
 
 
 teardowns: List[None] = []

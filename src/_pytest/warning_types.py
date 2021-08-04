@@ -90,6 +90,28 @@ class PytestUnknownMarkWarning(PytestWarning):
     __module__ = "pytest"
 
 
+@final
+class PytestUnraisableExceptionWarning(PytestWarning):
+    """An unraisable exception was reported.
+
+    Unraisable exceptions are exceptions raised in :meth:`__del__ <object.__del__>`
+    implementations and similar situations when the exception cannot be raised
+    as normal.
+    """
+
+    __module__ = "pytest"
+
+
+@final
+class PytestUnhandledThreadExceptionWarning(PytestWarning):
+    """An unhandled exception occurred in a :class:`~threading.Thread`.
+
+    Such exceptions don't propagate normally.
+    """
+
+    __module__ = "pytest"
+
+
 _W = TypeVar("_W", bound=PytestWarning)
 
 

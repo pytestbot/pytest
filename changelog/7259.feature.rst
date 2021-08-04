@@ -1,0 +1,7 @@
+Added :meth:`cache.mkdir() <pytest.Cache.mkdir>`, which is similar to the existing :meth:`cache.makedir() <pytest.Cache.makedir>`,
+but returns a :class:`pathlib.Path` instead of a legacy ``py.path.local``.
+
+Added a ``paths`` type to :meth:`parser.addini() <pytest.Parser.addini>`,
+as in ``parser.addini("mypaths", "my paths", type="paths")``,
+which is similar to the existing ``pathlist``,
+but returns a list of :class:`pathlib.Path` instead of legacy ``py.path.local``.

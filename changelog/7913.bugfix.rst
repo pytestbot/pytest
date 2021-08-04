@@ -1,1 +1,0 @@
-Fixed a crash or hang in ``pytester.spawn`` when the ``readline`` module is involved.

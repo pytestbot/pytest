@@ -1,0 +1,2 @@
+Added :class:`pytest.Stash`, a facility for plugins to store their data on :class:`~pytest.Config` and :class:`~_pytest.nodes.Node`\s in a type-safe and conflict-free manner.
+See :ref:`plugin-stash` for details.

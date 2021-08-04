@@ -27,8 +27,7 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
-import py
-
+from _pytest._io.saferepr import DEFAULT_REPR_MAX_SIZE
 from _pytest._io.saferepr import saferepr
 from _pytest._version import version
 from _pytest.assertion import util
@@ -37,14 +36,15 @@ from _pytest.assertion.util import (  # noqa: F401
 )
 from _pytest.config import Config
 from _pytest.main import Session
+from _pytest.pathlib import absolutepath
 from _pytest.pathlib import fnmatch_ex
-from _pytest.store import StoreKey
+from _pytest.stash import StashKey
 
 if TYPE_CHECKING:
     from _pytest.assertion import AssertionState
 
 
-assertstate_key = StoreKey["AssertionState"]()
+assertstate_key = StashKey["AssertionState"]()
 
 
 # pytest caches rewritten pycs in pycache dirs
@@ -87,7 +87,7 @@ class AssertionRewritingHook(importlib.abc.MetaPathFinder, importlib.abc.Loader)
     ) -> Optional[importlib.machinery.ModuleSpec]:
         if self._writing_pyc:
             return None
-        state = self.config._store[assertstate_key]
+        state = self.config.stash[assertstate_key]
         if self._early_rewrite_bailout(name, state):
             return None
         state.trace("find_module called for: %s" % name)
@@ -131,7 +131,7 @@ class AssertionRewritingHook(importlib.abc.MetaPathFinder, importlib.abc.Loader)
         assert module.__spec__ is not None
         assert module.__spec__.origin is not None
         fn = Path(module.__spec__.origin)
-        state = self.config._store[assertstate_key]
+        state = self.config.stash[assertstate_key]
 
         self._rewritten_names.add(module.__name__)
 
@@ -215,7 +215,7 @@ class AssertionRewritingHook(importlib.abc.MetaPathFinder, importlib.abc.Loader)
             return True
 
         if self.session is not None:
-            if self.session.isinitpath(py.path.local(fn)):
+            if self.session.isinitpath(absolutepath(fn)):
                 state.trace(f"matched test file (was specified on cmdline): {fn!r}")
                 return True
 
@@ -281,12 +281,16 @@ def _write_pyc_fp(
 ) -> None:
     # Technically, we don't have to have the same pyc format as
     # (C)Python, since these "pycs" should never be seen by builtin
-    # import. However, there's little reason deviate.
+    # import. However, there's little reason to deviate.
     fp.write(importlib.util.MAGIC_NUMBER)
+    # https://www.python.org/dev/peps/pep-0552/
+    if sys.version_info >= (3, 7):
+        flags = b"\x00\x00\x00\x00"
+        fp.write(flags)
     # as of now, bytecode header expects 32-bit numbers for size and mtime (#4903)
     mtime = int(source_stat.st_mtime) & 0xFFFFFFFF
     size = source_stat.st_size & 0xFFFFFFFF
-    # "<LL" stands for 2 unsigned longs, little-ending
+    # "<LL" stands for 2 unsigned longs, little-endian.
     fp.write(struct.pack("<LL", mtime, size))
     fp.write(marshal.dumps(co))
 
@@ -365,21 +369,33 @@ def _read_pyc(
     except OSError:
         return None
     with fp:
+        # https://www.python.org/dev/peps/pep-0552/
+        has_flags = sys.version_info >= (3, 7)
         try:
             stat_result = os.stat(os.fspath(source))
             mtime = int(stat_result.st_mtime)
             size = stat_result.st_size
-            data = fp.read(12)
+            data = fp.read(16 if has_flags else 12)
         except OSError as e:
             trace(f"_read_pyc({source}): OSError {e}")
             return None
         # Check for invalid or out of date pyc file.
-        if (
-            len(data) != 12
-            or data[:4] != importlib.util.MAGIC_NUMBER
-            or struct.unpack("<LL", data[4:]) != (mtime & 0xFFFFFFFF, size & 0xFFFFFFFF)
-        ):
-            trace("_read_pyc(%s): invalid or out of date pyc" % source)
+        if len(data) != (16 if has_flags else 12):
+            trace("_read_pyc(%s): invalid pyc (too short)" % source)
+            return None
+        if data[:4] != importlib.util.MAGIC_NUMBER:
+            trace("_read_pyc(%s): invalid pyc (bad magic number)" % source)
+            return None
+        if has_flags and data[4:8] != b"\x00\x00\x00\x00":
+            trace("_read_pyc(%s): invalid pyc (unsupported flags)" % source)
+            return None
+        mtime_data = data[8 if has_flags else 4 : 12 if has_flags else 8]
+        if int.from_bytes(mtime_data, "little") != mtime & 0xFFFFFFFF:
+            trace("_read_pyc(%s): out of date" % source)
+            return None
+        size_data = data[12 if has_flags else 8 : 16 if has_flags else 12]
+        if int.from_bytes(size_data, "little") != size & 0xFFFFFFFF:
+            trace("_read_pyc(%s): invalid pyc (incorrect size)" % source)
             return None
         try:
             co = marshal.load(fp)
@@ -412,7 +428,18 @@ def _saferepr(obj: object) -> str:
     sequences, especially '\n{' and '\n}' are likely to be present in
     JSON reprs.
     """
-    return saferepr(obj).replace("\n", "\\n")
+    maxsize = _get_maxsize_for_saferepr(util._config)
+    return saferepr(obj, maxsize=maxsize).replace("\n", "\\n")
+
+
+def _get_maxsize_for_saferepr(config: Optional[Config]) -> Optional[int]:
+    """Get `maxsize` configuration for saferepr based on the given config object."""
+    verbosity = config.getoption("verbose") if config is not None else 0
+    if verbosity >= 2:
+        return None
+    if verbosity >= 1:
+        return DEFAULT_REPR_MAX_SIZE * 10
+    return DEFAULT_REPR_MAX_SIZE
 
 
 def _format_assertmsg(obj: object) -> str:
@@ -657,12 +684,9 @@ class AssertionRewriter(ast.NodeVisitor):
         if not mod.body:
             # Nothing to do.
             return
-        # Insert some special imports at the top of the module but after any
-        # docstrings and __future__ imports.
-        aliases = [
-            ast.alias("builtins", "@py_builtins"),
-            ast.alias("_pytest.assertion.rewrite", "@pytest_ar"),
-        ]
+
+        # We'll insert some special imports at the top of the module, but after any
+        # docstrings and __future__ imports, so first figure out where that is.
         doc = getattr(mod, "docstring", None)
         expect_docstring = doc is None
         if doc is not None and self.is_rewrite_disabled(doc):
@@ -694,10 +718,27 @@ class AssertionRewriter(ast.NodeVisitor):
             lineno = item.decorator_list[0].lineno
         else:
             lineno = item.lineno
+        # Now actually insert the special imports.
+        if sys.version_info >= (3, 10):
+            aliases = [
+                ast.alias("builtins", "@py_builtins", lineno=lineno, col_offset=0),
+                ast.alias(
+                    "_pytest.assertion.rewrite",
+                    "@pytest_ar",
+                    lineno=lineno,
+                    col_offset=0,
+                ),
+            ]
+        else:
+            aliases = [
+                ast.alias("builtins", "@py_builtins"),
+                ast.alias("_pytest.assertion.rewrite", "@pytest_ar"),
+            ]
         imports = [
             ast.Import([alias], lineno=lineno, col_offset=0) for alias in aliases
         ]
         mod.body[pos:pos] = imports
+
         # Collect asserts.
         nodes: List[ast.AST] = [mod]
         while nodes:
