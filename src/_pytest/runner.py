@@ -3,6 +3,7 @@ import bdb
 import os
 import sys
 import warnings
+from operator import attrgetter
 from typing import Callable
 from typing import cast
 from typing import Dict
@@ -68,35 +69,43 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def pytest_terminal_summary(terminalreporter: "TerminalReporter") -> None:
-    durations = terminalreporter.config.option.durations
-    durations_min = terminalreporter.config.option.durations_min
-    verbose = terminalreporter.config.getvalue("verbose")
+    durations = terminalreporter.config.getoption("durations")
     if durations is None:
         return
-    tr = terminalreporter
-    dlist = []
-    for replist in tr.stats.values():
-        for rep in replist:
-            if hasattr(rep, "duration"):
-                dlist.append(rep)
-    if not dlist:
-        return
-    dlist.sort(key=lambda x: x.duration, reverse=True)  # type: ignore[no-any-return]
-    if not durations:
-        tr.write_sep("=", "slowest durations")
-    else:
-        tr.write_sep("=", "slowest %s durations" % durations)
-        dlist = dlist[:durations]
 
-    for i, rep in enumerate(dlist):
-        if verbose < 2 and rep.duration < durations_min:
-            tr.write_line("")
-            tr.write_line(
-                "(%s durations < %gs hidden.  Use -vv to show these durations.)"
-                % (len(dlist) - i, durations_min)
+    durations_min = terminalreporter.config.getoption("durations_min")
+    verbose = terminalreporter.config.getvalue("verbose")
+    reporter = terminalreporter
+    durations_list = []
+    for report_list in reporter.stats.values():
+        for report in report_list:
+            if hasattr(report, "duration"):
+                durations_list.append(report)
+    if not durations_list:
+        return
+
+    durations_list.sort(key=attrgetter("duration"), reverse=True)
+
+    if not durations:
+        reporter.write_sep("=", "slowest durations")
+    else:
+        reporter.write_sep("=", "slowest %s durations" % durations)
+        durations_list = durations_list[:durations]
+
+    for index, test_report in enumerate(durations_list):
+        if verbose < 2 and test_report.duration < durations_min:
+            total = len(durations_list) - index
+            pronoun, subject = (
+                ("this", "duration") if total == 1 else ("these", "durations")
+            )
+            reporter.write_line("")
+            reporter.write_line(
+                f"({total} {subject} slower than {durations_min:02.3f}s hidden.  Use -vv to show {pronoun} {subject}.)"
             )
             break
-        tr.write_line(f"{rep.duration:02.2f}s {rep.when:<8} {rep.nodeid}")
+        reporter.write_line(
+            f"{test_report.duration:02.2f}s {test_report.when:<8} {test_report.nodeid}"
+        )
 
 
 def pytest_sessionstart(session: "Session") -> None:

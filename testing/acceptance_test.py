@@ -869,7 +869,9 @@ class TestDurations:
         )
 
         result.stdout.fnmatch_lines(
-            ["(8 durations < 0.005s hidden.  Use -vv to show these durations.)"]
+            [
+                "(8 durations slower than 0.005s hidden.  Use -vv to show these durations.)"
+            ]
         )
 
     def test_calls_show_2(self, pytester: Pytester, mock_timing) -> None:
@@ -1295,3 +1297,59 @@ def test_no_brokenpipeerror_message(pytester: Pytester) -> None:
 
     # Cleanup.
     popen.stderr.close()
+
+
+def test_multiple_durations_pluralized_tr_summary(pytester: Pytester) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+        def test_delays():
+            assert True
+        """
+    )
+    result = pytester.runpytest("--durations=5", "--durations-min=10")
+    assert result.ret == ExitCode.OK
+    result.stdout.fnmatch_lines(
+        ["(3 durations slower than 10.000s hidden.  Use -vv to show these durations.)"]
+    )
+
+
+def test_single_duration_pluralized_tr_summary(pytester: Pytester) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+        import time
+        def _sleep(delay):
+            time.sleep(delay)
+        def test_one():
+            _sleep(0.05)
+        def test_two():
+            _sleep(0.25)
+        """
+    )
+    result = pytester.runpytest("--durations=2", "--durations-min=0.1")
+    assert result.ret == ExitCode.OK
+    result.stdout.fnmatch_lines(
+        ["(1 duration slower than 0.100s hidden.  Use -vv to show this duration.)"]
+    )
+
+
+def test_durations_zero_lists_all(pytester: Pytester) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+        import time
+        @pytest.mark.parametrize('_', range(6))
+        def test_this(_):
+            time.sleep(0.1)
+        """
+    )
+    result = pytester.runpytest("--durations=0")
+    assert result.ret == ExitCode.OK
+    # Check 6x setup & 6x teardown are hidden, but 6x call are shown
+    insertable_line = "*test_durations_zero_lists_all.py::test_this*{}*"
+    lines = [insertable_line.format(x) for x in range(6)]
+    lines.append(
+        "(12 durations slower than 0.005s hidden.  Use -vv to show these durations.)"
+    )
+    result.stdout.fnmatch_lines_random(lines)
