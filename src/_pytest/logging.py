@@ -19,6 +19,7 @@ from typing import TypeVar
 from typing import Union
 
 from _pytest import nodes
+from _pytest import shtab
 from _pytest._io import TerminalWriter
 from _pytest.capture import CaptureManager
 from _pytest.compat import final
@@ -34,6 +35,7 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
 from _pytest.stash import StashKey
 from _pytest.terminal import TerminalReporter
+
 
 if TYPE_CHECKING:
     logging_StreamHandler = logging.StreamHandler[StringIO]
@@ -272,6 +274,7 @@ def pytest_addoption(parser: Parser) -> None:
         dest="log_file",
         default=None,
         help="Path to a file when logging will be written to",
+        complete=shtab.FILE,
     )
     add_option_ini(
         "--log-file-level",

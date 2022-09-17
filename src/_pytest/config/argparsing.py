@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 from typing import Union
 
 import _pytest._io
+from _pytest import PREAMBLE
+from _pytest import shtab
 from _pytest.compat import final
 from _pytest.config.exceptions import UsageError
 from _pytest.deprecated import ARGUMENT_PERCENT_DEFAULT
@@ -26,6 +28,7 @@ from _pytest.deprecated import check_ispytest
 
 if TYPE_CHECKING:
     from typing_extensions import Literal
+
 
 FILE_OR_DIR = "file_or_dir"
 
@@ -124,11 +127,19 @@ class Parser:
             if group.options:
                 desc = group.description or group.name
                 arggroup = optparser.add_argument_group(desc)
+                if group.name == "debugconfig":
+                    shtab.add_argument_to(arggroup, preamble=PREAMBLE)
                 for option in group.options:
                     n = option.names()
                     a = option.attrs()
-                    arggroup.add_argument(*n, **a)
+                    complete = a.get("complete")
+                    if complete:
+                        del a["complete"]  # type: ignore
+                    action = arggroup.add_argument(*n, **a)
+                    if complete:
+                        action.complete = complete  # type: ignore
         file_or_dir_arg = optparser.add_argument(FILE_OR_DIR, nargs="*")
+        file_or_dir_arg.complete = shtab.FILE  # type: ignore
         # bash like autocompletion for dirs (appending '/')
         # Type ignored because typeshed doesn't know about argcomplete.
         file_or_dir_arg.completer = filescompleter  # type: ignore

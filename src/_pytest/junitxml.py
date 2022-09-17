@@ -21,6 +21,7 @@ from typing import Tuple
 from typing import Union
 
 import pytest
+from . import XML_FILE
 from _pytest import nodes
 from _pytest import timing
 from _pytest._code.code import ExceptionRepr
@@ -32,7 +33,6 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.reports import TestReport
 from _pytest.stash import StashKey
 from _pytest.terminal import TerminalReporter
-
 
 xml_key = StashKey["LogXML"]()
 
@@ -390,6 +390,7 @@ def pytest_addoption(parser: Parser) -> None:
         type=functools.partial(filename_arg, optname="--junitxml"),
         default=None,
         help="Create junit-xml style report file at given path",
+        complete=XML_FILE,
     )
     group.addoption(
         "--junitprefix",
