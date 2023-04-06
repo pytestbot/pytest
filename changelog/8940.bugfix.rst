@@ -1,0 +1,1 @@
+Fixed an issue where dirs without S_IXUSR prevented pytest from cleaning up the temp dir

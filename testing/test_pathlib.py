@@ -377,6 +377,26 @@ def test_long_path_during_cleanup(tmp_path: Path) -> None:
     assert not os.path.isdir(extended_path)
 
 
+def test_permission_denied_during_cleanup(tmp_path) -> None:
+    """
+    Ensure that deleting a numbered dir does not fail because of missing file
+    permission bits (#7940).
+    """
+    path = tmp_path / "temp-1"
+    p = path / "ham" / "spam" / "eggs"
+    p.parent.mkdir(parents=True)
+    p.touch(mode=0)
+    for p in p.parents:
+        if p == path:
+            break
+        p.chmod(mode=0)
+
+    lock_path = get_lock_path(path)
+    maybe_delete_a_numbered_dir(path)
+    assert not path.exists()
+    assert not lock_path.is_file()
+
+
 def test_get_extended_length_path_str() -> None:
     assert get_extended_length_path_str(r"c:\foo") == r"\\?\c:\foo"
     assert get_extended_length_path_str(r"\\share\foo") == r"\\?\UNC\share\foo"
