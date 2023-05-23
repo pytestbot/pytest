@@ -25,9 +25,9 @@ from _pytest.outcomes import exit
 from _pytest.outcomes import fail
 from _pytest.outcomes import skip
 from _pytest.outcomes import xfail
-from _pytest.python import Class
-from _pytest.python import Function
-from _pytest.python import Module
+from _pytest.python.nodes import Class
+from _pytest.python.nodes import Function
+from _pytest.python.nodes import Module
 from _pytest.runner import CallInfo
 from _pytest.scope import Scope
 

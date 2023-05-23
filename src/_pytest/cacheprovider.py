@@ -27,8 +27,8 @@ from _pytest.deprecated import check_ispytest
 from _pytest.fixtures import fixture
 from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
-from _pytest.python import Module
-from _pytest.python import Package
+from _pytest.python.nodes import Module
+from _pytest.python.nodes import Package
 from _pytest.reports import TestReport
 
 README_CONTENT = """\

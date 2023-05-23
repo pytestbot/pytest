@@ -39,6 +39,7 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.monkeypatch import MonkeyPatch
 
 tmppath_result_key = StashKey[Dict[str, bool]]()
+tmppath_factory_key = StashKey["TempPathFactory"]()
 
 
 @final
@@ -220,6 +221,7 @@ def pytest_configure(config: Config) -> None:
     available at pytest_configure time, but ideally should be moved entirely
     to the tmp_path_factory session fixture.
     """
+    config.stash[tmppath_factory_key]
     mp = MonkeyPatch()
     config.add_cleanup(mp.undo)
     _tmp_path_factory = TempPathFactory.from_config(config, _ispytest=True)
@@ -245,7 +247,7 @@ def pytest_addoption(parser: Parser) -> None:
 def tmp_path_factory(request: FixtureRequest) -> TempPathFactory:
     """Return a :class:`pytest.TempPathFactory` instance for the test session."""
     # Set dynamically by pytest_configure() above.
-    return request.config._tmp_path_factory  # type: ignore
+    return request.config.stash[tmppath_factory_key]
 
 
 def _mk_tmp(request: FixtureRequest, factory: TempPathFactory) -> Path:

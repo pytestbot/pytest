@@ -5,14 +5,15 @@ from typing import Any
 from typing import Dict
 
 import _pytest._code
+import _pytest.python.nodes
 import pytest
 from _pytest.config import ExitCode
 from _pytest.main import Session
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.nodes import Collector
 from _pytest.pytester import Pytester
-from _pytest.python import Class
-from _pytest.python import Function
+from _pytest.python.nodes import Class
+from _pytest.python.nodes import Function
 
 
 class TestModule:
@@ -266,8 +267,8 @@ class TestClass:
 class TestFunction:
     def test_getmodulecollector(self, pytester: Pytester) -> None:
         item = pytester.getitem("def test_func(): pass")
-        modcol = item.getparent(pytest.Module)
-        assert isinstance(modcol, pytest.Module)
+        modcol = item.getparent(_pytest.python.nodes.Module)
+        assert isinstance(modcol, _pytest.python.nodes.Module)
         assert hasattr(modcol.obj, "test_func")
 
     @pytest.mark.filterwarnings("default")
@@ -298,7 +299,7 @@ class TestFunction:
         session = Session.from_config(config)
         session._fixturemanager = FixtureManager(session)
 
-        return pytest.Function.from_parent(parent=session, **kwargs)
+        return _pytest.python.nodes.Function.from_parent(parent=session, **kwargs)
 
     def test_function_equality(self, pytester: Pytester) -> None:
         def func1():
@@ -696,7 +697,7 @@ class TestFunction:
         )
         originalnames = []
         for x in items:
-            assert isinstance(x, pytest.Function)
+            assert isinstance(x, _pytest.python.nodes.Function)
             originalnames.append(x.originalname)
         assert originalnames == [
             "test_func",
@@ -729,16 +730,16 @@ class TestSorting:
         """
         )
         fn1 = pytester.collect_by_name(modcol, "test_pass")
-        assert isinstance(fn1, pytest.Function)
+        assert isinstance(fn1, _pytest.python.nodes.Function)
         fn2 = pytester.collect_by_name(modcol, "test_pass")
-        assert isinstance(fn2, pytest.Function)
+        assert isinstance(fn2, _pytest.python.nodes.Function)
 
         assert fn1 == fn2
         assert fn1 != modcol
         assert hash(fn1) == hash(fn2)
 
         fn3 = pytester.collect_by_name(modcol, "test_fail")
-        assert isinstance(fn3, pytest.Function)
+        assert isinstance(fn3, _pytest.python.nodes.Function)
         assert not (fn1 == fn3)
         assert fn1 != fn3
 

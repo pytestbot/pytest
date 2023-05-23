@@ -3,6 +3,7 @@ import sys
 import textwrap
 from pathlib import Path
 
+import _pytest.python.nodes
 import pytest
 from _pytest import fixtures
 from _pytest.compat import getfuncargnames
@@ -11,7 +12,7 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.pytester import get_public_names
 from _pytest.pytester import Pytester
-from _pytest.python import Function
+from _pytest.python.nodes import Function
 
 
 def test_getfuncargnames_functions():
@@ -854,7 +855,7 @@ class TestRequestBasic:
         item.session._setupstate.setup(item)
         item._request._fillfixtures()
         # successively check finalization calls
-        parent = item.getparent(pytest.Module)
+        parent = item.getparent(_pytest.python.nodes.Module)
         assert parent is not None
         teardownlist = parent.obj.teardownlist
         ss = item.session._setupstate

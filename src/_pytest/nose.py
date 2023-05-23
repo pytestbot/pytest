@@ -5,7 +5,7 @@ from _pytest.config import hookimpl
 from _pytest.deprecated import NOSE_SUPPORT
 from _pytest.fixtures import getfixturemarker
 from _pytest.nodes import Item
-from _pytest.python import Function
+from _pytest.python.nodes import Function
 from _pytest.unittest import TestCaseFunction
 
 

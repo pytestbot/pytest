@@ -6,6 +6,7 @@ import textwrap
 from pathlib import Path
 from typing import List
 
+import _pytest.python.nodes
 import pytest
 from _pytest.config import ExitCode
 from _pytest.fixtures import FixtureRequest
@@ -41,21 +42,21 @@ class TestCollector:
         """
         )
         fn1 = pytester.collect_by_name(modcol, "test_pass")
-        assert isinstance(fn1, pytest.Function)
+        assert isinstance(fn1, _pytest.python.nodes.Function)
         fn2 = pytester.collect_by_name(modcol, "test_pass")
-        assert isinstance(fn2, pytest.Function)
+        assert isinstance(fn2, _pytest.python.nodes.Function)
 
         assert fn1 == fn2
         assert fn1 != modcol
         assert hash(fn1) == hash(fn2)
 
         fn3 = pytester.collect_by_name(modcol, "test_fail")
-        assert isinstance(fn3, pytest.Function)
+        assert isinstance(fn3, _pytest.python.nodes.Function)
         assert not (fn1 == fn3)
         assert fn1 != fn3
 
         for fn in fn1, fn2, fn3:
-            assert isinstance(fn, pytest.Function)
+            assert isinstance(fn, _pytest.python.nodes.Function)
             assert fn != 3  # type: ignore[comparison-overlap]
             assert fn != modcol
             assert fn != [1, 2, 3]  # type: ignore[comparison-overlap]
@@ -73,21 +74,21 @@ class TestCollector:
         """
         )
         cls = pytester.collect_by_name(modcol, "TestClass")
-        assert isinstance(cls, pytest.Class)
+        assert isinstance(cls, _pytest.python.nodes.Class)
         fn = pytester.collect_by_name(cls, "test_foo")
-        assert isinstance(fn, pytest.Function)
+        assert isinstance(fn, _pytest.python.nodes.Function)
 
-        assert fn.getparent(pytest.Module) is modcol
+        assert fn.getparent(_pytest.python.nodes.Module) is modcol
         assert modcol.module is not None
         assert modcol.cls is None
         assert modcol.instance is None
 
-        assert fn.getparent(pytest.Class) is cls
+        assert fn.getparent(_pytest.python.nodes.Class) is cls
         assert cls.module is not None
         assert cls.cls is not None
         assert cls.instance is None
 
-        assert fn.getparent(pytest.Function) is fn
+        assert fn.getparent(_pytest.python.nodes.Function) is fn
         assert fn.module is not None
         assert fn.cls is not None
         assert fn.instance is not None
@@ -648,7 +649,7 @@ class Test_getinitialnodes:
         x = ensure_file(tmp_path / "x.py")
         config = pytester.parseconfigure(x)
         col = pytester.getnode(config, x)
-        assert isinstance(col, pytest.Module)
+        assert isinstance(col, _pytest.python.nodes.Module)
         assert col.name == "x.py"
         assert col.parent is not None
         assert col.parent.parent is None
@@ -670,8 +671,8 @@ class Test_getinitialnodes:
         col = pytester.getnode(config, x)
         assert col is not None
         assert col.name == "x.py"
-        assert isinstance(col, pytest.Module)
-        assert isinstance(col.parent, pytest.Package)
+        assert isinstance(col, _pytest.python.nodes.Module)
+        assert isinstance(col.parent, _pytest.python.nodes.Package)
         assert isinstance(col.parent.parent, pytest.Session)
         # session is batman (has no parents)
         assert col.parent.parent.parent is None
@@ -912,10 +913,10 @@ class TestNodeKeywords:
         """,
             "test_method",
         )
-        assert isinstance(item, pytest.Function)
-        cls = item.getparent(pytest.Class)
+        assert isinstance(item, _pytest.python.nodes.Function)
+        cls = item.getparent(_pytest.python.nodes.Class)
         assert cls is not None
-        mod = item.getparent(pytest.Module)
+        mod = item.getparent(_pytest.python.nodes.Module)
         assert mod is not None
 
         assert item.keywords["foo"] == pytest.mark.foo.mark
@@ -1478,7 +1479,7 @@ def test_fscollector_from_parent(pytester: Pytester, request: FixtureRequest) ->
 def test_class_from_parent(pytester: Pytester, request: FixtureRequest) -> None:
     """Ensure Class.from_parent can forward custom arguments to the constructor."""
 
-    class MyCollector(pytest.Class):
+    class MyCollector(_pytest.python.nodes.Class):
         def __init__(self, name, parent, x):
             super().__init__(name, parent)
             self.x = x

@@ -16,6 +16,7 @@ from typing import Union
 import hypothesis
 from hypothesis import strategies
 
+import _pytest.python.metafunc
 import pytest
 from _pytest import fixtures
 from _pytest import python
@@ -24,12 +25,12 @@ from _pytest.compat import getfuncargnames
 from _pytest.compat import NOTSET
 from _pytest.outcomes import fail
 from _pytest.pytester import Pytester
-from _pytest.python import IdMaker
+from _pytest.python.metafunc import IdMaker
 from _pytest.scope import Scope
 
 
 class TestMetafunc:
-    def Metafunc(self, func, config=None) -> python.Metafunc:
+    def Metafunc(self, func, config=None) -> _pytest.python.metafunc.Metafunc:
         # The unit tests of this class check if things work correctly
         # on the funcarg level, so we don't need a full blown
         # initialization.
@@ -47,7 +48,9 @@ class TestMetafunc:
         names = getfuncargnames(func)
         fixtureinfo: Any = FuncFixtureInfoMock(names)
         definition: Any = DefinitionMock._create(obj=func, _nodeid="mock::nodeid")
-        return python.Metafunc(definition, fixtureinfo, config, _ispytest=True)
+        return _pytest.python.metafunc.Metafunc(
+            definition, fixtureinfo, config, _ispytest=True
+        )
 
     def test_no_funcargs(self) -> None:
         def function():
@@ -138,7 +141,7 @@ class TestMetafunc:
 
     def test_find_parametrized_scope(self) -> None:
         """Unit test for _find_parametrized_scope (#3941)."""
-        from _pytest.python import _find_parametrized_scope
+        from _pytest.python.metafunc import _find_parametrized_scope
 
         @dataclasses.dataclass
         class DummyFixtureDef:

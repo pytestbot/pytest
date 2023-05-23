@@ -675,7 +675,7 @@ class Session(nodes.FSCollector):
         return items
 
     def collect(self) -> Iterator[Union[nodes.Item, nodes.Collector]]:
-        from _pytest.python import Package
+        from _pytest.python.nodes import Package
 
         # Keep track of any collected nodes in here, so we don't duplicate fixtures.
         node_cache1: Dict[Path, Sequence[nodes.Collector]] = {}

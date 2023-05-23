@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-import _pytest
+import _pytest.python.nodes
 from _pytest import nodes
 from _pytest._code import getfslineno
 from _pytest._code.code import FormattedExcinfo
@@ -71,9 +71,7 @@ if TYPE_CHECKING:
 
     from _pytest.scope import _ScopeName
     from _pytest.main import Session
-    from _pytest.python import CallSpec2
-    from _pytest.python import Metafunc
-
+    from _pytest.python.metafunc import CallSpec2, Metafunc
 
 # The value of the fixture -- return/yield of the fixture function (type variable).
 FixtureValue = TypeVar("FixtureValue")
@@ -113,9 +111,9 @@ def pytest_sessionstart(session: "Session") -> None:
 
 
 def get_scope_package(node, fixturedef: "FixtureDef[object]"):
-    import pytest
+    pass
 
-    cls = pytest.Package
+    cls = _pytest.python.nodes.Package
     current = node
     fixture_package_name = "{}/{}".format(fixturedef.baseid, "__init__.py")
     while current and (
@@ -135,11 +133,11 @@ def get_scope_node(
     if scope is Scope.Function:
         return node.getparent(nodes.Item)
     elif scope is Scope.Class:
-        return node.getparent(_pytest.python.Class)
+        return node.getparent(_pytest.python.nodes.Class)
     elif scope is Scope.Module:
-        return node.getparent(_pytest.python.Module)
+        return node.getparent(_pytest.python.nodes.Module)
     elif scope is Scope.Package:
-        return node.getparent(_pytest.python.Package)
+        return node.getparent(_pytest.python.nodes.Package)
     elif scope is Scope.Session:
         return node.getparent(_pytest.main.Session)
     else:
@@ -191,7 +189,7 @@ def add_funcarg_pseudo_fixture_def(
             node = get_scope_node(collector, scope)
             if node is None:
                 assert scope is Scope.Class and isinstance(
-                    collector, _pytest.python.Module
+                    collector, _pytest.python.nodes.Module
                 )
                 # Use module-level collector for class-scope (for now).
                 node = collector
@@ -474,7 +472,7 @@ class FixtureRequest:
         """Class (can be None) where the test function was collected."""
         if self.scope not in ("class", "function"):
             raise AttributeError(f"cls not available in {self.scope}-scoped context")
-        clscol = self._pyfuncitem.getparent(_pytest.python.Class)
+        clscol = self._pyfuncitem.getparent(_pytest.python.nodes.Class)
         if clscol:
             return clscol.obj
 
@@ -493,7 +491,7 @@ class FixtureRequest:
         """Python module object where the test function was collected."""
         if self.scope not in ("function", "class", "module"):
             raise AttributeError(f"module not available in {self.scope}-scoped context")
-        return self._pyfuncitem.getparent(_pytest.python.Module).obj
+        return self._pyfuncitem.getparent(_pytest.python.nodes.Module).obj
 
     @property
     def path(self) -> Path:

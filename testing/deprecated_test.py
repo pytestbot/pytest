@@ -3,6 +3,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import _pytest.python.nodes
 import pytest
 from _pytest import deprecated
 from _pytest.compat import legacy_path
@@ -75,9 +76,9 @@ def test_fscollector_gethookproxy_isinitpath(pytester: Pytester) -> None:
         """,
         withinit=True,
     )
-    assert isinstance(module, pytest.Module)
+    assert isinstance(module, _pytest.python.nodes.Module)
     package = module.parent
-    assert isinstance(package, pytest.Package)
+    assert isinstance(package, _pytest.python.nodes.Package)
 
     with pytest.warns(pytest.PytestDeprecationWarning, match="gethookproxy"):
         package.gethookproxy(pytester.path)
