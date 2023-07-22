@@ -4534,3 +4534,150 @@ def test_yield_fixture_with_no_value(pytester: Pytester) -> None:
     result.assert_outcomes(errors=1)
     result.stdout.fnmatch_lines([expected])
     assert result.ret == ExitCode.TESTS_FAILED
+
+
+@pytest.mark.xfail(
+    reason="arg2fixturedefs should get updated on dynamic parametrize. This gets solved by PR#11220"
+)
+def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
+    pytester.makeconftest(
+        """
+        import pytest
+
+        @pytest.fixture(scope='session', params=[0, 1])
+        def fixture1(request):
+            pass
+
+        @pytest.fixture(scope='session')
+        def fixture2(fixture1):
+            pass
+
+        @pytest.fixture(scope='session', params=[2, 3])
+        def fixture3(request, fixture2):
+            pass
+        """
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+        def pytest_generate_tests(metafunc):
+            metafunc.parametrize("fixture2", [4, 5], scope='session')
+
+        @pytest.fixture(scope='session')
+        def fixture4():
+            pass
+
+        @pytest.fixture(scope='session')
+        def fixture2(fixture3, fixture4):
+            pass
+
+        def test(fixture2):
+            assert fixture2 in (4, 5)
+        """
+    )
+    res = pytester.inline_run("-s")
+    res.assertoutcome(passed=2)
+
+
+def test_reordering_after_dynamic_parametrize(pytester: Pytester):
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            if metafunc.definition.name == "test_0":
+                metafunc.parametrize("fixture2", [0])
+
+        @pytest.fixture(scope='module')
+        def fixture1():
+            pass
+
+        @pytest.fixture(scope='module')
+        def fixture2(fixture1):
+            pass
+
+        def test_0(fixture2):
+            pass
+
+        def test_1():
+            pass
+
+        def test_2(fixture1):
+            pass
+        """
+    )
+    result = pytester.runpytest("--collect-only")
+    result.stdout.fnmatch_lines(
+        [
+            "*test_0*",
+            "*test_1*",
+            "*test_2*",
+        ],
+        consecutive=True,
+    )
+
+
+def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pytester):
+    pytester.makeconftest(
+        """
+        import pytest
+        from _pytest.config import hookimpl
+        from unittest.mock import Mock
+
+        original_method = None
+
+        @hookimpl(trylast=True)
+        def pytest_sessionstart(session):
+            global original_method
+            original_method = session._fixturemanager.getfixtureclosure
+            session._fixturemanager.getfixtureclosure = Mock(wraps=original_method)
+
+        @hookimpl(tryfirst=True)
+        def pytest_sessionfinish(session, exitstatus):
+            global original_method
+            session._fixturemanager.getfixtureclosure = original_method
+        """
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            if metafunc.definition.name == "test_0":
+                metafunc.parametrize("fixture", [0])
+
+        @pytest.fixture(scope='module')
+        def fixture():
+            pass
+
+        def test_0(fixture):
+            pass
+
+        def test_1():
+            pass
+
+        @pytest.mark.parametrize("fixture", [0])
+        def test_2(fixture):
+            pass
+
+        @pytest.mark.parametrize("fixture", [0], indirect=True)
+        def test_3(fixture):
+            pass
+
+        @pytest.fixture
+        def fm(request):
+            yield request._fixturemanager
+
+        def test(fm):
+            method = fm.getfixtureclosure
+            assert len(method.call_args_list) == 6
+            assert method.call_args_list[0].args[0].nodeid.endswith("test_0")
+            assert method.call_args_list[1].args[0].nodeid.endswith("test_0")
+            assert method.call_args_list[2].args[0].nodeid.endswith("test_1")
+            assert method.call_args_list[3].args[0].nodeid.endswith("test_2")
+            assert method.call_args_list[4].args[0].nodeid.endswith("test_3")
+            assert method.call_args_list[5].args[0].nodeid.endswith("test")
+        """
+    )
+    reprec = pytester.inline_run()
+    reprec.assertoutcome(passed=5)

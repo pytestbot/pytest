@@ -11,6 +11,7 @@ import warnings
 from collections import Counter
 from collections import defaultdict
 from functools import partial
+from functools import wraps
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -60,6 +61,7 @@ from _pytest.deprecated import INSTANCE_COLLECTOR
 from _pytest.deprecated import NOSE_SUPPORT_METHOD
 from _pytest.fixtures import FixtureDef
 from _pytest.fixtures import FixtureRequest
+from _pytest.fixtures import _get_direct_parametrize_args
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
 from _pytest.main import Session
@@ -380,6 +382,23 @@ del _EmptyClass
 # fmt: on
 
 
+def unwrap_metafunc_parametrize_and_possibly_prune_dependency_tree(metafunc):
+    metafunc.parametrize = metafunc._parametrize
+    del metafunc._parametrize
+    if metafunc.has_dynamic_parametrize:
+        # Dynamic direct parametrization may have shadowed some fixtures
+        # so make sure we update what the function really needs.
+        definition = metafunc.definition
+        fixture_closure = definition.parent.session._fixturemanager.getfixtureclosure(
+            definition,
+            definition._fixtureinfo.initialnames,
+            definition._fixtureinfo.name2fixturedefs,
+            ignore_args=_get_direct_parametrize_args(definition) + ["request"],
+        )
+        definition._fixtureinfo.names_closure[:] = fixture_closure
+    del metafunc.has_dynamic_parametrize
+
+
 class PyCollector(PyobjMixin, nodes.Collector):
     def funcnamefilter(self, name: str) -> bool:
         return self._matches_prefix_or_glob_option("python_functions", name)
@@ -476,8 +495,6 @@ class PyCollector(PyobjMixin, nodes.Collector):
         definition = FunctionDefinition.from_parent(self, name=name, callobj=funcobj)
         fixtureinfo = definition._fixtureinfo
 
-        # pytest_generate_tests impls call metafunc.parametrize() which fills
-        # metafunc._calls, the outcome of the hook.
         metafunc = Metafunc(
             definition=definition,
             fixtureinfo=fixtureinfo,
@@ -486,22 +503,29 @@ class PyCollector(PyobjMixin, nodes.Collector):
             module=module,
             _ispytest=True,
         )
-        methods = []
+        methods = [unwrap_metafunc_parametrize_and_possibly_prune_dependency_tree]
         if hasattr(module, "pytest_generate_tests"):
             methods.append(module.pytest_generate_tests)
         if cls is not None and hasattr(cls, "pytest_generate_tests"):
             methods.append(cls().pytest_generate_tests)
+
+        setattr(metafunc, "has_dynamic_parametrize", False)
+
+        @wraps(metafunc.parametrize)
+        def set_has_dynamic_parametrize(*args, **kwargs):
+            setattr(metafunc, "has_dynamic_parametrize", True)
+            metafunc._parametrize(*args, **kwargs)  # type: ignore[attr-defined]
+
+        setattr(metafunc, "_parametrize", metafunc.parametrize)
+        setattr(metafunc, "parametrize", set_has_dynamic_parametrize)
+
+        # pytest_generate_tests impls call metafunc.parametrize() which fills
+        # metafunc._calls, the outcome of the hook.
         self.ihook.pytest_generate_tests.call_extra(methods, dict(metafunc=metafunc))
 
         if not metafunc._calls:
             yield Function.from_parent(self, name=name, fixtureinfo=fixtureinfo)
         else:
-            # Direct parametrizations taking place in module/class-specific
-            # `metafunc.parametrize` calls may have shadowed some fixtures, so make sure
-            # we update what the function really needs a.k.a its fixture closure. Note that
-            # direct parametrizations using `@pytest.mark.parametrize` have already been considered
-            # into making the closure using `ignore_args` arg to `getfixtureclosure`.
-            fixtureinfo.prune_dependency_tree()
 
             for callspec in metafunc._calls:
                 subname = f"{name}[{callspec.id}]"
