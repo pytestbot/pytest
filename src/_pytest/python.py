@@ -11,7 +11,6 @@ import warnings
 from collections import Counter
 from collections import defaultdict
 from functools import partial
-from functools import wraps
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -382,12 +381,13 @@ del _EmptyClass
 # fmt: on
 
 
-def unwrap_metafunc_parametrize_and_possibly_prune_dependency_tree(metafunc):
-    metafunc.parametrize = metafunc._parametrize
-    del metafunc._parametrize
-    if metafunc.has_dynamic_parametrize:
+def prune_dependency_tree_if_test_is_dynamically_parametrized(metafunc):
+    if metafunc._calls:
         # Dynamic direct parametrization may have shadowed some fixtures
-        # so make sure we update what the function really needs.
+        # so make sure we update what the function really needs. Note that
+        # we didn't need to do this if only indirect dynamic parametrization
+        # had taken place, but anyway we did it as differentiating between direct
+        # and indirect requires a dirty hack.
         definition = metafunc.definition
         fixture_closure = definition.parent.session._fixturemanager.getfixtureclosure(
             definition,
@@ -396,7 +396,6 @@ def unwrap_metafunc_parametrize_and_possibly_prune_dependency_tree(metafunc):
             ignore_args=_get_direct_parametrize_args(definition) + ["request"],
         )
         definition._fixtureinfo.names_closure[:] = fixture_closure
-    del metafunc.has_dynamic_parametrize
 
 
 class PyCollector(PyobjMixin, nodes.Collector):
@@ -503,21 +502,11 @@ class PyCollector(PyobjMixin, nodes.Collector):
             module=module,
             _ispytest=True,
         )
-        methods = [unwrap_metafunc_parametrize_and_possibly_prune_dependency_tree]
+        methods = [prune_dependency_tree_if_test_is_dynamically_parametrized]
         if hasattr(module, "pytest_generate_tests"):
             methods.append(module.pytest_generate_tests)
         if cls is not None and hasattr(cls, "pytest_generate_tests"):
             methods.append(cls().pytest_generate_tests)
-
-        setattr(metafunc, "has_dynamic_parametrize", False)
-
-        @wraps(metafunc.parametrize)
-        def set_has_dynamic_parametrize(*args, **kwargs):
-            setattr(metafunc, "has_dynamic_parametrize", True)
-            metafunc._parametrize(*args, **kwargs)  # type: ignore[attr-defined]
-
-        setattr(metafunc, "_parametrize", metafunc.parametrize)
-        setattr(metafunc, "parametrize", set_has_dynamic_parametrize)
 
         # pytest_generate_tests impls call metafunc.parametrize() which fills
         # metafunc._calls, the outcome of the hook.

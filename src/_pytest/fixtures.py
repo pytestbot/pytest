@@ -1326,6 +1326,12 @@ def _get_direct_parametrize_args(node: nodes.Node) -> List[str]:
     return parametrize_argnames
 
 
+def deduplicate_names(seq: Iterable[str]) -> Tuple[str, ...]:
+    """De-duplicate the sequence of names while keeping the original order."""
+    # Ideally we would use a set, but it does not preserve insertion order.
+    return tuple(dict.fromkeys(seq))
+
+
 class FixtureManager:
     """pytest fixture definitions and information is stored and managed
     from this class.
@@ -1404,13 +1410,8 @@ class FixtureManager:
         usefixtures = tuple(
             arg for mark in node.iter_markers(name="usefixtures") for arg in mark.args
         )
-        initialnames = cast(
-            Tuple[str],
-            tuple(
-                dict.fromkeys(
-                    tuple(self._getautousenames(node.nodeid)) + usefixtures + argnames
-                )
-            ),
+        initialnames = deduplicate_names(
+            tuple(self._getautousenames(node.nodeid)) + usefixtures + argnames
         )
 
         arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]] = {}
@@ -1459,23 +1460,19 @@ class FixtureManager:
     def getfixtureclosure(
         self,
         parentnode: nodes.Node,
-        initialnames: Tuple[str],
+        initialnames: Tuple[str, ...],
         arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]],
         ignore_args: Sequence[str] = (),
     ) -> List[str]:
         # Collect the closure of all fixtures, starting with the given
-        # initialnames as the initial set.  As we have to visit all
-        # factory definitions anyway, we also populate arg2fixturedefs
-        # mapping so that the caller can reuse it and does not have
-        # to re-discover fixturedefs again for each fixturename
+        # initialnames containing function arguments, `usefixture` markers
+        # and `autouse` fixtures as the initial set.  As we have to visit all
+        # factory definitions anyway, we also populate arg2fixturedefs mapping
+        # for the args missing therein so that the caller can reuse it and does
+        # not have to re-discover fixturedefs again for each fixturename
         # (discovering matching fixtures for a given name/node is expensive).
 
-        fixturenames_closure = list(initialnames)
-
-        def merge(otherlist: Iterable[str]) -> None:
-            for arg in otherlist:
-                if arg not in fixturenames_closure:
-                    fixturenames_closure.append(arg)
+        fixturenames_closure = initialnames
 
         lastlen = -1
         parentid = parentnode.nodeid
@@ -1489,7 +1486,9 @@ class FixtureManager:
                     if fixturedefs:
                         arg2fixturedefs[argname] = fixturedefs
                 if argname in arg2fixturedefs:
-                    merge(arg2fixturedefs[argname][-1].argnames)
+                    fixturenames_closure = deduplicate_names(
+                        fixturenames_closure + arg2fixturedefs[argname][-1].argnames
+                    )
 
         def sort_by_scope(arg_name: str) -> Scope:
             try:
@@ -1499,8 +1498,7 @@ class FixtureManager:
             else:
                 return fixturedefs[-1]._scope
 
-        fixturenames_closure.sort(key=sort_by_scope, reverse=True)
-        return fixturenames_closure
+        return sorted(fixturenames_closure, key=sort_by_scope, reverse=True)
 
     def pytest_generate_tests(self, metafunc: "Metafunc") -> None:
         """Generate new tests based on parametrized fixtures used by the given metafunc"""
