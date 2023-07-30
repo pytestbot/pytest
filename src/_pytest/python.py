@@ -381,21 +381,9 @@ del _EmptyClass
 # fmt: on
 
 
-def prune_dependency_tree_if_test_is_dynamically_parametrized(metafunc):
+def check_if_test_is_dynamically_parametrized(metafunc):
     if metafunc._calls:
-        # Dynamic direct parametrization may have shadowed some fixtures
-        # so make sure we update what the function really needs. Note that
-        # we didn't need to do this if only indirect dynamic parametrization
-        # had taken place, but anyway we did it as differentiating between direct
-        # and indirect requires a dirty hack.
-        definition = metafunc.definition
-        fixture_closure = definition.parent.session._fixturemanager.getfixtureclosure(
-            definition,
-            definition._fixtureinfo.initialnames,
-            definition._fixtureinfo.name2fixturedefs,
-            ignore_args=_get_direct_parametrize_args(definition) + ["request"],
-        )
-        definition._fixtureinfo.names_closure[:] = fixture_closure
+        setattr(metafunc, "has_dynamic_parametrize", True)
 
 
 class PyCollector(PyobjMixin, nodes.Collector):
@@ -502,7 +490,7 @@ class PyCollector(PyobjMixin, nodes.Collector):
             module=module,
             _ispytest=True,
         )
-        methods = [prune_dependency_tree_if_test_is_dynamically_parametrized]
+        methods = [check_if_test_is_dynamically_parametrized]
         if hasattr(module, "pytest_generate_tests"):
             methods.append(module.pytest_generate_tests)
         if cls is not None and hasattr(cls, "pytest_generate_tests"):
@@ -515,6 +503,20 @@ class PyCollector(PyobjMixin, nodes.Collector):
         if not metafunc._calls:
             yield Function.from_parent(self, name=name, fixtureinfo=fixtureinfo)
         else:
+
+            if hasattr(metafunc, "has_dynamic_parametrize"):
+                # add_funcarg_pseudo_fixture_def may have shadowed some fixtures
+                # due to dynamic direct parametrization so make sure we update
+                # what the function really needs. Note that we didn't need to do this if
+                # only indirect dynamic parametrization had taken place, but anyway we did
+                # it as differentiating between direct and indirect requires a dirty hack.
+                fixture_closure, _ = fm.getfixtureclosure(
+                    definition,
+                    fixtureinfo.initialnames,
+                    fixtureinfo.name2fixturedefs,
+                    ignore_args=_get_direct_parametrize_args(definition),
+                )
+                fixtureinfo.names_closure[:] = fixture_closure
 
             for callspec in metafunc._calls:
                 subname = f"{name}[{callspec.id}]"

@@ -1414,11 +1414,10 @@ class FixtureManager:
             tuple(self._getautousenames(node.nodeid)) + usefixtures + argnames
         )
 
-        arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]] = {}
-        names_closure = self.getfixtureclosure(
+        names_closure, arg2fixturedefs = self.getfixtureclosure(
             node,
             initialnames,
-            arg2fixturedefs,
+            None,
             ignore_args=_get_direct_parametrize_args(node),
         )
         return FuncFixtureInfo(
@@ -1461,9 +1460,9 @@ class FixtureManager:
         self,
         parentnode: nodes.Node,
         initialnames: Tuple[str, ...],
-        arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]],
+        arg2fixturedefs: Union[Dict[str, Sequence[FixtureDef[Any]]], None],
         ignore_args: Sequence[str] = (),
-    ) -> List[str]:
+    ) -> Tuple[List[str], Dict[str, Sequence[FixtureDef[Any]]]]:
         # Collect the closure of all fixtures, starting with the given
         # initialnames containing function arguments, `usefixture` markers
         # and `autouse` fixtures as the initial set.  As we have to visit all
@@ -1474,6 +1473,8 @@ class FixtureManager:
 
         fixturenames_closure = initialnames
 
+        if arg2fixturedefs is None:
+            arg2fixturedefs = {}
         lastlen = -1
         parentid = parentnode.nodeid
         while lastlen != len(fixturenames_closure):
@@ -1498,7 +1499,10 @@ class FixtureManager:
             else:
                 return fixturedefs[-1]._scope
 
-        return sorted(fixturenames_closure, key=sort_by_scope, reverse=True)
+        return (
+            sorted(fixturenames_closure, key=sort_by_scope, reverse=True),
+            arg2fixturedefs,
+        )
 
     def pytest_generate_tests(self, metafunc: "Metafunc") -> None:
         """Generate new tests based on parametrized fixtures used by the given metafunc"""
