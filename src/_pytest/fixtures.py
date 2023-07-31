@@ -1486,7 +1486,12 @@ class FixtureManager:
                     fixturedefs = self.getfixturedefs(argname, parentid)
                     if fixturedefs:
                         arg2fixturedefs[argname] = fixturedefs
-                if argname in arg2fixturedefs:
+                else:
+                    fixturedefs = arg2fixturedefs[argname]
+                if fixturedefs and not (
+                    fixturedefs[-1].func.__name__ == "get_direct_param_fixture_func"
+                    and fixturedefs[-1].baseid == ""
+                ):
                     fixturenames_closure = deduplicate_names(
                         fixturenames_closure + arg2fixturedefs[argname][-1].argnames
                     )

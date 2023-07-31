@@ -1,3 +1,4 @@
+import pytest
 from _pytest.pytester import Pytester
 
 
@@ -251,4 +252,40 @@ def test_verbose_include_multiline_docstring(pytester: Pytester) -> None:
             "    ",
             "    Docstring content that extends into a third paragraph.",
         ]
+    )
+
+
+@pytest.mark.xfail(
+    reason="python.py::show_fixtures_per_test uses arg2fixturedefs instead of fixtureclosure"
+)
+def test_should_not_show_fixtures_pruned_after_dynamic_parametrization(
+    pytester: Pytester,
+) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.fixture
+        def fixture1():
+            pass
+
+        @pytest.fixture
+        def fixture2(fixture1):
+            pass
+
+        @pytest.fixture
+        def fixture3(fixture2):
+            pass
+
+        def pytest_generate_tests(metafunc):
+            metafunc.parametrize("fixture3", [0])
+
+        def test(fixture3):
+            pass
+    """
+    )
+    result = pytester.runpytest("--fixtures-per-test")
+    result.stdout.re_match_lines(
+        [r"-+ fixtures used by test\[0\] -+", r"-+ \(.+\) -+", r"fixture3 -- .+"],
+        consecutive=True,
     )

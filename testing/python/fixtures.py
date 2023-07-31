@@ -4619,6 +4619,32 @@ def test_reordering_after_dynamic_parametrize(pytester: Pytester):
     )
 
 
+def test_request_shouldnt_be_in_closure_after_pruning_dep_tree_when_its_not_in_initial_closure(
+    pytester: Pytester,
+):
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            metafunc.parametrize("arg", [0])
+
+        @pytest.fixture()
+        def fixture():
+            pass
+
+        def test(fixture, arg):
+            pass
+        """
+    )
+    result = pytester.runpytest("--setup-show")
+    result.stdout.re_match_lines(
+        [
+            r".+test\[0\] \(fixtures used: arg, fixture\)\.",
+        ],
+    )
+
+
 def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pytester):
     pytester.makeconftest(
         """
