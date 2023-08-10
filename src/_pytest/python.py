@@ -58,9 +58,9 @@ from _pytest.config.argparsing import Parser
 from _pytest.deprecated import check_ispytest
 from _pytest.deprecated import INSTANCE_COLLECTOR
 from _pytest.deprecated import NOSE_SUPPORT_METHOD
+from _pytest.fixtures import _get_direct_parametrize_args
 from _pytest.fixtures import FixtureDef
 from _pytest.fixtures import FixtureRequest
-from _pytest.fixtures import _get_direct_parametrize_args
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
 from _pytest.main import Session
@@ -503,13 +503,15 @@ class PyCollector(PyobjMixin, nodes.Collector):
         if not metafunc._calls:
             yield Function.from_parent(self, name=name, fixtureinfo=fixtureinfo)
         else:
-
             if hasattr(metafunc, "has_dynamic_parametrize"):
-                # add_funcarg_pseudo_fixture_def may have shadowed some fixtures
-                # due to dynamic direct parametrization so make sure we update
-                # what the function really needs. Note that we didn't need to do this if
-                # only indirect dynamic parametrization had taken place, but anyway we did
-                # it as differentiating between direct and indirect requires a dirty hack.
+                # Parametrizations takeing place in module/class-specific `pytest_generate_tests`
+                # hooks, a.k.a dynamic parametrizations, may have shadowed some fixtures
+                # so make sure we update what the function really needs.
+                #
+                # Note that we didn't need to do this if only indirect dynamic parametrization had
+                # taken place i.e. with `indirect=True`, but anyway we did it as differentiating
+                # between direct and indirect requires a dirty hack.
+                fm = self.session._fixturemanager
                 fixture_closure, _ = fm.getfixtureclosure(
                     definition,
                     fixtureinfo.initialnames,
