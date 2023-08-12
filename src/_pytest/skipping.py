@@ -5,15 +5,19 @@ import platform
 import sys
 import traceback
 from collections.abc import Mapping
+from contextvars import ContextVar
 from typing import Generator
+from typing import MutableMapping
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import Union
 
 from _pytest.config import Config
 from _pytest.config import hookimpl
 from _pytest.config.argparsing import Parser
 from _pytest.mark.structures import Mark
+from _pytest.mark.structures import MARK_GEN
 from _pytest.nodes import Item
 from _pytest.outcomes import fail
 from _pytest.outcomes import skip
@@ -299,3 +303,32 @@ def pytest_report_teststatus(report: BaseReport) -> Optional[Tuple[str, str, str
         elif report.passed:
             return "xpassed", "X", "XPASS"
     return None
+
+
+current_item_var: ContextVar[Item] = ContextVar("current_item_var")
+
+
+def pytest_runtest_protocol(item: Item, nextitem: Optional[Item]) -> None:
+    current_item_var.set(item)
+
+
+class _NotPassed:
+    pass
+
+
+_not_passed = _NotPassed()
+
+
+def expect_failure(
+    reason: str = "",
+    raises: Optional[
+        Union[Type[BaseException], Tuple[Type[BaseException], ...]]
+    ] = None,
+    strict: Union[bool, _NotPassed] = _not_passed,
+) -> None:
+    kwargs: MutableMapping[str, bool] = {}
+    if not isinstance(strict, _NotPassed):
+        kwargs["strict"] = strict
+    current_item_var.get().add_marker(
+        MARK_GEN.xfail(reason=reason, raises=raises, **kwargs)
+    )

@@ -738,6 +738,54 @@ class TestXFail:
         res.stdout.fnmatch_lines(["*1 failed*"])
         res.stdout.fnmatch_lines(["*1 xfailed*"])
 
+    @pytest.mark.parametrize("strict", [True, False])
+    def test_expect_failure_xfailed(self, pytester: Pytester, strict: bool) -> None:
+        reprec = pytester.inline_runsource(
+            """
+            import pytest
+            def test_func():
+                pytest.expect_failure(strict=%s)
+                assert 0
+        """
+            % strict
+        )
+        reports = reprec.getreports("pytest_runtest_logreport")
+        assert len(reports) == 3
+        callreport = reports[1]
+        assert callreport.skipped
+        assert callreport.wasxfail == ""
+
+    def test_expect_failure_xpassed(self, pytester: Pytester) -> None:
+        reprec = pytester.inline_runsource(
+            """
+            import pytest
+            def test_func():
+                pytest.expect_failure(reason="expect failure")
+                assert 1
+        """
+        )
+        reports = reprec.getreports("pytest_runtest_logreport")
+        assert len(reports) == 3
+        callreport = reports[1]
+        assert callreport.passed
+        assert callreport.wasxfail == "expect failure"
+
+    def test_expect_failure_xpassed_strict(self, pytester: Pytester) -> None:
+        reprec = pytester.inline_runsource(
+            """
+            import pytest
+            def test_func():
+                pytest.expect_failure(strict=True, reason="nope")
+                assert 1
+        """
+        )
+        reports = reprec.getreports("pytest_runtest_logreport")
+        assert len(reports) == 3
+        callreport = reports[1]
+        assert callreport.failed
+        assert str(callreport.longrepr) == "[XPASS(strict)] nope"
+        assert not hasattr(callreport, "wasxfail")
+
 
 class TestXFailwithSetupTeardown:
     def test_failing_setup_issue9(self, pytester: Pytester) -> None:

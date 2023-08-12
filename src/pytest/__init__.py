@@ -61,6 +61,7 @@ from _pytest.recwarn import warns
 from _pytest.reports import CollectReport
 from _pytest.reports import TestReport
 from _pytest.runner import CallInfo
+from _pytest.skipping import expect_failure
 from _pytest.stash import Stash
 from _pytest.stash import StashKey
 from _pytest.terminal import TestShortLogReport
@@ -100,6 +101,7 @@ __all__ = [
     "exit",
     "ExceptionInfo",
     "ExitCode",
+    "expect_failure",
     "fail",
     "File",
     "fixture",
