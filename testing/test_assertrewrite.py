@@ -685,6 +685,25 @@ class TestAssertionRewrite:
         assert msg is not None
         assert "<MY42 object> < 0" in msg
 
+    def test_assert_handling_raise_in__iter__(self, pytester: Pytester) -> None:
+        pytester.makepyfile(
+            """\
+            class A:
+                def __iter__(self):
+                    raise ValueError()
+
+                def __eq__(self, o: object) -> bool:
+                    return self is o
+
+                def __repr__(self):
+                    return "<A object>"
+
+            assert A() == A()
+            """
+        )
+        result = pytester.runpytest()
+        result.stdout.fnmatch_lines(["*E*assert <A object> == <A object>"])
+
     def test_formatchar(self) -> None:
         def f() -> None:
             assert "%test" == "test"  # type: ignore[comparison-overlap]

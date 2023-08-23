@@ -132,7 +132,7 @@ def isiterable(obj: Any) -> bool:
     try:
         iter(obj)
         return not istext(obj)
-    except TypeError:
+    except Exception:
         return False
 
 

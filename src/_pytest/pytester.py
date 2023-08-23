@@ -829,7 +829,7 @@ class Pytester:
         return self._makefile(ext, args, kwargs)
 
     def makeconftest(self, source: str) -> Path:
-        """Write a contest.py file.
+        """Write a conftest.py file.
 
         :param source: The contents.
         :returns: The conftest.py file.

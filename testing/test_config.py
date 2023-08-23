@@ -507,6 +507,24 @@ class TestParseIni:
         result = pytester.runpytest("--foo=1")
         result.stdout.fnmatch_lines("* no tests ran in *")
 
+    def test_args_source_args(self, pytester: Pytester):
+        config = pytester.parseconfig("--", "test_filename.py")
+        assert config.args_source == Config.ArgsSource.ARGS
+
+    def test_args_source_invocation_dir(self, pytester: Pytester):
+        config = pytester.parseconfig()
+        assert config.args_source == Config.ArgsSource.INVOCATION_DIR
+
+    def test_args_source_testpaths(self, pytester: Pytester):
+        pytester.makeini(
+            """
+            [pytest]
+            testpaths=*
+        """
+        )
+        config = pytester.parseconfig()
+        assert config.args_source == Config.ArgsSource.TESTPATHS
+
 
 class TestConfigCmdlineParsing:
     def test_parsing_again_fails(self, pytester: Pytester) -> None:

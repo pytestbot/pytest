@@ -237,7 +237,7 @@ pytest.mark.xfail
 
 Marks a test function as *expected to fail*.
 
-.. py:function:: pytest.mark.xfail(condition=None, *, reason=None, raises=None, run=True, strict=False)
+.. py:function:: pytest.mark.xfail(condition=None, *, reason=None, raises=None, run=True, strict=xfail_strict)
 
     :type condition: bool or str
     :param condition:
@@ -249,16 +249,18 @@ Marks a test function as *expected to fail*.
     :keyword Type[Exception] raises:
         Exception subclass (or tuple of subclasses) expected to be raised by the test function; other exceptions will fail the test.
     :keyword bool run:
-        If the test function should actually be executed. If ``False``, the function will always xfail and will
+        Whether the test function should actually be executed. If ``False``, the function will always xfail and will
         not be executed (useful if a function is segfaulting).
     :keyword bool strict:
-        * If ``False`` (the default) the function will be shown in the terminal output as ``xfailed`` if it fails
+        * If ``False`` the function will be shown in the terminal output as ``xfailed`` if it fails
           and as ``xpass`` if it passes. In both cases this will not cause the test suite to fail as a whole. This
           is particularly useful to mark *flaky* tests (tests that fail at random) to be tackled later.
         * If ``True``, the function will be shown in the terminal output as ``xfailed`` if it fails, but if it
           unexpectedly passes then it will **fail** the test suite. This is particularly useful to mark functions
           that are always failing and there should be a clear indication if they unexpectedly start to pass (for example
           a new release of a library fixes a known bug).
+
+        Defaults to :confval:`xfail_strict`, which is ``False`` by default.
 
 
 Custom marks
@@ -1638,11 +1640,11 @@ passed multiple times. The expected format is ``name=value``. For example::
    Additionally, ``pytest`` will attempt to intelligently identify and ignore a
    virtualenv by the presence of an activation script.  Any directory deemed to
    be the root of a virtual environment will not be considered during test
-   collection unless ``‑‑collect‑in‑virtualenv`` is given.  Note also that
-   ``norecursedirs`` takes precedence over ``‑‑collect‑in‑virtualenv``; e.g. if
+   collection unless ``--collect-in-virtualenv`` is given.  Note also that
+   ``norecursedirs`` takes precedence over ``--collect-in-virtualenv``; e.g. if
    you intend to run tests in a virtualenv with a base directory that matches
    ``'.*'`` you *must* override ``norecursedirs`` in addition to using the
-   ``‑‑collect‑in‑virtualenv`` flag.
+   ``--collect-in-virtualenv`` flag.
 
 
 .. confval:: python_classes

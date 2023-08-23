@@ -233,6 +233,9 @@ def xfail(reason: str = "") -> NoReturn:
 
     This function should be called only during testing (setup, call or teardown).
 
+    No other code is executed after using ``xfail()`` (it is implemented
+    internally by raising an exception).
+
     :param reason:
         The message to show the user as reason for the xfail.
 

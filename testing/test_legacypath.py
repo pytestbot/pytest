@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from _pytest.compat import LEGACY_PATH
+from _pytest.fixtures import TopRequest
 from _pytest.legacypath import TempdirFactory
 from _pytest.legacypath import Testdir
 
@@ -91,7 +92,7 @@ def test_fixturerequest_getmodulepath(pytester: pytest.Pytester) -> None:
     modcol = pytester.getmodulecol("def test_somefunc(): pass")
     (item,) = pytester.genitems([modcol])
     assert isinstance(item, pytest.Function)
-    req = pytest.FixtureRequest(item, _ispytest=True)
+    req = TopRequest(item, _ispytest=True)
     assert req.path == modcol.path
     assert req.fspath == modcol.fspath  # type: ignore[attr-defined]
 

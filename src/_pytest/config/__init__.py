@@ -953,7 +953,8 @@ class Config:
         #: Command line arguments.
         ARGS = enum.auto()
         #: Invocation directory.
-        INCOVATION_DIR = enum.auto()
+        INVOCATION_DIR = enum.auto()
+        INCOVATION_DIR = INVOCATION_DIR  # backwards compatibility alias
         #: 'testpaths' configuration value.
         TESTPATHS = enum.auto()
 
@@ -1278,7 +1279,7 @@ class Config:
             else:
                 result = []
             if not result:
-                source = Config.ArgsSource.INCOVATION_DIR
+                source = Config.ArgsSource.INVOCATION_DIR
                 result = [str(invocation_dir)]
         return result, source
 

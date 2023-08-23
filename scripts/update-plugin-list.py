@@ -44,6 +44,7 @@ DEVELOPMENT_STATUS_CLASSIFIERS = (
 )
 ADDITIONAL_PROJECTS = {  # set of additional projects to consider as plugins
     "logassert",
+    "nuts",
 }
 
 
