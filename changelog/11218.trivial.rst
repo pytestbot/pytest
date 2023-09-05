@@ -1,0 +1,5 @@
+(This entry is meant to assist plugins which access private pytest internals to instantiate ``FixtureRequest`` objects.)
+
+:class:`~pytest.FixtureRequest` is now an abstract class which can't be instantiated directly.
+A new concrete ``TopRequest`` subclass of ``FixtureRequest`` has been added for the ``request`` fixture in test functions,
+as counterpart to the existing ``SubRequest`` subclass for the ``request`` fixture in fixture functions.

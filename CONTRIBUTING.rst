@@ -50,7 +50,7 @@ Fix bugs
 --------
 
 Look through the `GitHub issues for bugs <https://github.com/pytest-dev/pytest/labels/type:%20bug>`_.
-See also the `"status: easy" issues <https://github.com/pytest-dev/pytest/labels/status%3A%20easy>`_
+See also the `"good first issue" issues <https://github.com/pytest-dev/pytest/labels/good%20first%20issue>`_
 that are friendly to new contributors.
 
 :ref:`Talk <contact>` to developers to find out how you can fix specific bugs. To indicate that you are going

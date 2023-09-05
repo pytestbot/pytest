@@ -659,6 +659,8 @@ class LoggingPlugin:
         )
         if self._log_cli_enabled():
             terminal_reporter = config.pluginmanager.get_plugin("terminalreporter")
+            # Guaranteed by `_log_cli_enabled()`.
+            assert terminal_reporter is not None
             capture_manager = config.pluginmanager.get_plugin("capturemanager")
             # if capturemanager plugin is disabled, live logging still works.
             self.log_cli_handler: Union[

@@ -27,7 +27,19 @@ concurrency:
 permissions: {}
 
 jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Build and Check Package
+      uses: hynek/build-and-inspect-python-package@v1.5
+
   build:
+    needs: [package]
+
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     permissions:
@@ -58,7 +70,6 @@ jobs:
           "macos-py310",
           "macos-py312",
 
-          "docs",
           "doctesting",
           "plugins",
         ]
@@ -149,10 +160,6 @@ jobs:
             os: ubuntu-latest
             tox_env: "plugins"
 
-          - name: "docs"
-            python: "3.8"
-            os: ubuntu-latest
-            tox_env: "docs"
           - name: "doctesting"
             python: "3.8"
             os: ubuntu-latest
@@ -164,6 +171,12 @@ jobs:
       with:
         fetch-depth: 0
         persist-credentials: false
+
+    - name: Download Package
+      uses: actions/download-artifact@v3
+      with:
+        name: Packages
+        path: dist
 
     - name: Set up Python ${{ matrix.python }}
       uses: actions/setup-python@v4
@@ -178,11 +191,13 @@ jobs:
 
     - name: Test without coverage
       if: "! matrix.use_coverage"
-      run: "tox -e ${{ matrix.tox_env }}"
+      shell: bash
+      run: tox run -e ${{ matrix.tox_env }} --installpkg `find dist/*.tar.gz`
 
     - name: Test with coverage
       if: "matrix.use_coverage"
-      run: "tox -e ${{ matrix.tox_env }}-coverage"
+      shell: bash
+      run: tox run -e ${{ matrix.tox_env }}-coverage --installpkg `find dist/*.tar.gz`
 
     - name: Generate coverage report
       if: "matrix.use_coverage"
@@ -196,10 +211,3 @@ jobs:
         fail_ci_if_error: true
         files: ./coverage.xml
         verbose: true
-
-  check-package:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Build and Check Package
-      uses: hynek/build-and-inspect-python-package@v1.5

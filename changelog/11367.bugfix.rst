@@ -1,0 +1,1 @@
+Fixed bug where `user_properties` where not being saved in the JUnit XML file if a fixture failed during teardown.

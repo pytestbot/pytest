@@ -1,2 +1,0 @@
-Fixed issue when using ``--import-mode=importlib`` together with ``--doctest-modules`` that caused modules
-to be imported more than once, causing problems with modules that have import side effects.

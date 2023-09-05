@@ -461,7 +461,9 @@ if TYPE_CHECKING:
             *conditions: Union[str, bool],
             reason: str = ...,
             run: bool = ...,
-            raises: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = ...,
+            raises: Union[
+                None, Type[BaseException], Tuple[Type[BaseException], ...]
+            ] = ...,
             strict: bool = ...,
         ) -> MarkDecorator:
             ...

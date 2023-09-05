@@ -12,6 +12,7 @@ from _pytest.config import Config
 from _pytest.config import ExitCode
 from _pytest.config import PrintHelp
 from _pytest.config.argparsing import Parser
+from _pytest.terminal import TerminalReporter
 
 
 class HelpAction(Action):
@@ -161,7 +162,10 @@ def pytest_cmdline_main(config: Config) -> Optional[Union[int, ExitCode]]:
 def showhelp(config: Config) -> None:
     import textwrap
 
-    reporter = config.pluginmanager.get_plugin("terminalreporter")
+    reporter: Optional[TerminalReporter] = config.pluginmanager.get_plugin(
+        "terminalreporter"
+    )
+    assert reporter is not None
     tw = reporter._tw
     tw.write(config._parser.optparser.format_help())
     tw.line()

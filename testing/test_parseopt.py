@@ -291,7 +291,8 @@ class TestParser:
 
 def test_argcomplete(pytester: Pytester, monkeypatch: MonkeyPatch) -> None:
     try:
-        encoding = locale.getencoding()  # New in Python 3.11, ignores utf-8 mode
+        # New in Python 3.11, ignores utf-8 mode
+        encoding = locale.getencoding()  # type: ignore[attr-defined]
     except AttributeError:
         encoding = locale.getpreferredencoding(False)
     try:

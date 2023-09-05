@@ -32,7 +32,7 @@ from _pytest.compat import safe_getattr
 from _pytest.config import Config
 from _pytest.config.argparsing import Parser
 from _pytest.fixtures import fixture
-from _pytest.fixtures import FixtureRequest
+from _pytest.fixtures import TopRequest
 from _pytest.nodes import Collector
 from _pytest.nodes import Item
 from _pytest.outcomes import OutcomeException
@@ -261,7 +261,7 @@ class DoctestItem(Item):
         self.runner = runner
         self.dtest = dtest
         self.obj = None
-        self.fixture_request: Optional[FixtureRequest] = None
+        self.fixture_request: Optional[TopRequest] = None
 
     @classmethod
     def from_parent(  # type: ignore
@@ -571,7 +571,7 @@ class DoctestModule(Module):
                 )
 
 
-def _setup_fixtures(doctest_item: DoctestItem) -> FixtureRequest:
+def _setup_fixtures(doctest_item: DoctestItem) -> TopRequest:
     """Used by DoctestTextfile and DoctestItem to setup fixture information."""
 
     def func() -> None:
@@ -582,7 +582,7 @@ def _setup_fixtures(doctest_item: DoctestItem) -> FixtureRequest:
     doctest_item._fixtureinfo = fm.getfixtureinfo(  # type: ignore[attr-defined]
         node=doctest_item, func=func, cls=None, funcargs=False
     )
-    fixture_request = FixtureRequest(doctest_item, _ispytest=True)  # type: ignore[arg-type]
+    fixture_request = TopRequest(doctest_item, _ispytest=True)  # type: ignore[arg-type]
     fixture_request._fillfixtures()
     return fixture_request
 

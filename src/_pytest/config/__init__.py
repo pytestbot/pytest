@@ -38,7 +38,9 @@ from typing import TYPE_CHECKING
 from typing import Union
 
 from pluggy import HookimplMarker
+from pluggy import HookimplOpts
 from pluggy import HookspecMarker
+from pluggy import HookspecOpts
 from pluggy import PluginManager
 
 import _pytest._code
@@ -440,15 +442,17 @@ class PytestPluginManager(PluginManager):
         # Used to know when we are importing conftests after the pytest_configure stage.
         self._configured = False
 
-    def parse_hookimpl_opts(self, plugin: _PluggyPlugin, name: str):
+    def parse_hookimpl_opts(
+        self, plugin: _PluggyPlugin, name: str
+    ) -> Optional[HookimplOpts]:
         # pytest hooks are always prefixed with "pytest_",
         # so we avoid accessing possibly non-readable attributes
         # (see issue #1073).
         if not name.startswith("pytest_"):
-            return
+            return None
         # Ignore names which can not be hooks.
         if name == "pytest_plugins":
-            return
+            return None
 
         opts = super().parse_hookimpl_opts(plugin, name)
         if opts is not None:
@@ -457,18 +461,18 @@ class PytestPluginManager(PluginManager):
         method = getattr(plugin, name)
         # Consider only actual functions for hooks (#3775).
         if not inspect.isroutine(method):
-            return
+            return None
         # Collect unmarked hooks as long as they have the `pytest_' prefix.
-        return _get_legacy_hook_marks(
+        return _get_legacy_hook_marks(  # type: ignore[return-value]
             method, "impl", ("tryfirst", "trylast", "optionalhook", "hookwrapper")
         )
 
-    def parse_hookspec_opts(self, module_or_class, name: str):
+    def parse_hookspec_opts(self, module_or_class, name: str) -> Optional[HookspecOpts]:
         opts = super().parse_hookspec_opts(module_or_class, name)
         if opts is None:
             method = getattr(module_or_class, name)
             if name.startswith("pytest_"):
-                opts = _get_legacy_hook_marks(
+                opts = _get_legacy_hook_marks(  # type: ignore[assignment]
                     method,
                     "spec",
                     ("firstresult", "historic"),
@@ -953,7 +957,8 @@ class Config:
         #: Command line arguments.
         ARGS = enum.auto()
         #: Invocation directory.
-        INCOVATION_DIR = enum.auto()
+        INVOCATION_DIR = enum.auto()
+        INCOVATION_DIR = INVOCATION_DIR  # backwards compatibility alias
         #: 'testpaths' configuration value.
         TESTPATHS = enum.auto()
 
@@ -1066,9 +1071,10 @@ class Config:
             fin()
 
     def get_terminal_writer(self) -> TerminalWriter:
-        terminalreporter: TerminalReporter = self.pluginmanager.get_plugin(
+        terminalreporter: Optional[TerminalReporter] = self.pluginmanager.get_plugin(
             "terminalreporter"
         )
+        assert terminalreporter is not None
         return terminalreporter._tw
 
     def pytest_cmdline_parse(
@@ -1278,7 +1284,7 @@ class Config:
             else:
                 result = []
             if not result:
-                source = Config.ArgsSource.INCOVATION_DIR
+                source = Config.ArgsSource.INVOCATION_DIR
                 result = [str(invocation_dir)]
         return result, source
 

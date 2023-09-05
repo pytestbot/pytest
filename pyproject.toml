@@ -17,7 +17,12 @@ python_classes = ["Test", "Acceptance"]
 python_functions = ["test"]
 # NOTE: "doc" is not included here, but gets tested explicitly via "doctesting".
 testpaths = ["testing"]
-norecursedirs = ["testing/example_scripts"]
+norecursedirs = [
+  "testing/example_scripts",
+  ".*",
+  "build",
+  "dist",
+]
 xfail_strict = true
 filterwarnings = [
     "error",

@@ -1,0 +1,2 @@
+Corrected the spelling of ``Config.ArgsSource.INVOCATION_DIR``.
+The previous spelling ``INCOVATION_DIR`` remains as an alias.

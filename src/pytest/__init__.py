@@ -1,5 +1,7 @@
 # PYTHON_ARGCOMPLETE_OK
 """pytest: unit and functional testing with Python."""
+from typing import TYPE_CHECKING
+
 from _pytest import __version__
 from _pytest import version_tuple
 from _pytest._code import ExceptionInfo
@@ -165,11 +167,12 @@ __all__ = [
     "yield_fixture",
 ]
 
+if not TYPE_CHECKING:
 
-def __getattr__(name: str) -> object:
-    if name == "Instance":
-        # The import emits a deprecation warning.
-        from _pytest.python import Instance
+    def __getattr__(name: str) -> object:
+        if name == "Instance":
+            # The import emits a deprecation warning.
+            from _pytest.python import Instance
 
-        return Instance
-    raise AttributeError(f"module {__name__} has no attribute {name}")
+            return Instance
+        raise AttributeError(f"module {__name__} has no attribute {name}")

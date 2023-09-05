@@ -237,7 +237,7 @@ pytest.mark.xfail
 
 Marks a test function as *expected to fail*.
 
-.. py:function:: pytest.mark.xfail(condition=None, *, reason=None, raises=None, run=True, strict=False)
+.. py:function:: pytest.mark.xfail(condition=None, *, reason=None, raises=None, run=True, strict=xfail_strict)
 
     :type condition: bool or str
     :param condition:
@@ -249,16 +249,18 @@ Marks a test function as *expected to fail*.
     :keyword Type[Exception] raises:
         Exception subclass (or tuple of subclasses) expected to be raised by the test function; other exceptions will fail the test.
     :keyword bool run:
-        If the test function should actually be executed. If ``False``, the function will always xfail and will
+        Whether the test function should actually be executed. If ``False``, the function will always xfail and will
         not be executed (useful if a function is segfaulting).
     :keyword bool strict:
-        * If ``False`` (the default) the function will be shown in the terminal output as ``xfailed`` if it fails
+        * If ``False`` the function will be shown in the terminal output as ``xfailed`` if it fails
           and as ``xpass`` if it passes. In both cases this will not cause the test suite to fail as a whole. This
           is particularly useful to mark *flaky* tests (tests that fail at random) to be tackled later.
         * If ``True``, the function will be shown in the terminal output as ``xfailed`` if it fails, but if it
           unexpectedly passes then it will **fail** the test suite. This is particularly useful to mark functions
           that are always failing and there should be a clear indication if they unexpectedly start to pass (for example
           a new release of a library fixes a known bug).
+
+        Defaults to :confval:`xfail_strict`, which is ``False`` by default.
 
 
 Custom marks
@@ -978,10 +980,10 @@ TestShortLogReport
 .. autoclass:: pytest.TestShortLogReport()
     :members:
 
-_Result
+Result
 ~~~~~~~
 
-Result object used within :ref:`hook wrappers <hookwrapper>`, see :py:class:`_Result in the pluggy documentation <pluggy._callers._Result>` for more information.
+Result object used within :ref:`hook wrappers <hookwrapper>`, see :py:class:`Result in the pluggy documentation <pluggy.Result>` for more information.
 
 Stash
 ~~~~~
@@ -1638,11 +1640,11 @@ passed multiple times. The expected format is ``name=value``. For example::
    Additionally, ``pytest`` will attempt to intelligently identify and ignore a
    virtualenv by the presence of an activation script.  Any directory deemed to
    be the root of a virtual environment will not be considered during test
-   collection unless ``‑‑collect‑in‑virtualenv`` is given.  Note also that
-   ``norecursedirs`` takes precedence over ``‑‑collect‑in‑virtualenv``; e.g. if
+   collection unless ``--collect-in-virtualenv`` is given.  Note also that
+   ``norecursedirs`` takes precedence over ``--collect-in-virtualenv``; e.g. if
    you intend to run tests in a virtualenv with a base directory that matches
    ``'.*'`` you *must* override ``norecursedirs`` in addition to using the
-   ``‑‑collect‑in‑virtualenv`` flag.
+   ``--collect-in-virtualenv`` flag.
 
 
 .. confval:: python_classes
@@ -1890,8 +1892,12 @@ All the command-line flags can be obtained by running ``pytest --help``::
                             tests. Optional argument: glob (default: '*').
       --cache-clear         Remove all cache contents at start of test run
       --lfnf={all,none}, --last-failed-no-failures={all,none}
-                            Which tests to run with no previously (known)
-                            failures
+                            With ``--lf``, determines whether to execute tests
+                            when there are no previously (known) failures or
+                            when no cached ``lastfailed`` data was found.
+                            ``all`` (the default) runs the full test suite
+                            again. ``none`` just emits a message about no known
+                            failures and exits successfully.
       --sw, --stepwise      Exit on test failure and continue from last failing
                             test next time
       --sw-skip, --stepwise-skip

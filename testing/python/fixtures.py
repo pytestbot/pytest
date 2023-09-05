@@ -4,10 +4,9 @@ import textwrap
 from pathlib import Path
 
 import pytest
-from _pytest import fixtures
 from _pytest.compat import getfuncargnames
 from _pytest.config import ExitCode
-from _pytest.fixtures import FixtureRequest
+from _pytest.fixtures import TopRequest
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.pytester import get_public_names
 from _pytest.pytester import Pytester
@@ -659,7 +658,7 @@ class TestRequestBasic:
         """
         )
         assert isinstance(item, Function)
-        req = fixtures.FixtureRequest(item, _ispytest=True)
+        req = TopRequest(item, _ispytest=True)
         assert req.function == item.obj
         assert req.keywords == item.keywords
         assert hasattr(req.module, "test_func")
@@ -701,9 +700,7 @@ class TestRequestBasic:
         (item1,) = pytester.genitems([modcol])
         assert isinstance(item1, Function)
         assert item1.name == "test_method"
-        arg2fixturedefs = fixtures.FixtureRequest(
-            item1, _ispytest=True
-        )._arg2fixturedefs
+        arg2fixturedefs = TopRequest(item1, _ispytest=True)._arg2fixturedefs
         assert len(arg2fixturedefs) == 1
         assert arg2fixturedefs["something"][0].argname == "something"
 
@@ -969,7 +966,7 @@ class TestRequestBasic:
         modcol = pytester.getmodulecol("def test_somefunc(): pass")
         (item,) = pytester.genitems([modcol])
         assert isinstance(item, Function)
-        req = fixtures.FixtureRequest(item, _ispytest=True)
+        req = TopRequest(item, _ispytest=True)
         assert req.path == modcol.path
 
     def test_request_fixturenames(self, pytester: Pytester) -> None:
@@ -1128,7 +1125,7 @@ class TestRequestMarking:
         """
         )
         assert isinstance(item1, Function)
-        req1 = fixtures.FixtureRequest(item1, _ispytest=True)
+        req1 = TopRequest(item1, _ispytest=True)
         assert "xfail" not in item1.keywords
         req1.applymarker(pytest.mark.xfail)
         assert "xfail" in item1.keywords
@@ -4036,7 +4033,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "m1 f1".split()
 
     def test_func_closure_with_native_fixtures(
@@ -4085,7 +4082,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         # order of fixtures based on their scope and position in the parameter list
         assert (
             request.fixturenames
@@ -4113,7 +4110,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "m1 f1".split()
 
     def test_func_closure_scopes_reordered(self, pytester: Pytester) -> None:
@@ -4147,7 +4144,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "s1 m1 c1 f2 f1".split()
 
     def test_func_closure_same_scope_closer_root_first(
@@ -4190,7 +4187,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "p_sub m_conf m_sub m_test f1".split()
 
     def test_func_closure_all_scopes_complex(self, pytester: Pytester) -> None:
@@ -4235,7 +4232,7 @@ class TestScopeOrdering:
         )
         items, _ = pytester.inline_genitems()
         assert isinstance(items[0], Function)
-        request = FixtureRequest(items[0], _ispytest=True)
+        request = TopRequest(items[0], _ispytest=True)
         assert request.fixturenames == "s1 p1 m1 m2 c1 f2 f1".split()
 
     def test_multiple_packages(self, pytester: Pytester) -> None:

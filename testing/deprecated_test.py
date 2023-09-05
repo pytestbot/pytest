@@ -272,7 +272,7 @@ def test_importing_instance_is_deprecated(pytester: Pytester) -> None:
         pytest.PytestDeprecationWarning,
         match=re.escape("The pytest.Instance collector type is deprecated"),
     ):
-        pytest.Instance
+        pytest.Instance  # type:ignore[attr-defined]
 
     with pytest.warns(
         pytest.PytestDeprecationWarning,

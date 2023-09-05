@@ -1228,6 +1228,36 @@ def test_record_property(pytester: Pytester, run_and_parse: RunAndParse) -> None
     result.stdout.fnmatch_lines(["*= 1 passed in *"])
 
 
+def test_record_property_on_test_and_teardown_failure(
+    pytester: Pytester, run_and_parse: RunAndParse
+) -> None:
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.fixture
+        def other(record_property):
+            record_property("bar", 1)
+            yield
+            assert 0
+
+        def test_record(record_property, other):
+            record_property("foo", "<1")
+            assert 0
+    """
+    )
+    result, dom = run_and_parse()
+    node = dom.find_first_by_tag("testsuite")
+    tnodes = node.find_by_tag("testcase")
+    for tnode in tnodes:
+        psnode = tnode.find_first_by_tag("properties")
+        assert psnode, f"testcase didn't had expected properties:\n{tnode}"
+        pnodes = psnode.find_by_tag("property")
+        pnodes[0].assert_attr(name="bar", value="1")
+        pnodes[1].assert_attr(name="foo", value="<1")
+    result.stdout.fnmatch_lines(["*= 1 failed, 1 error *"])
+
+
 def test_record_property_same_name(
     pytester: Pytester, run_and_parse: RunAndParse
 ) -> None:

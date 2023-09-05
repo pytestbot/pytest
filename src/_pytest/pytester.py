@@ -751,7 +751,7 @@ class Pytester:
 
     def make_hook_recorder(self, pluginmanager: PytestPluginManager) -> HookRecorder:
         """Create a new :class:`HookRecorder` for a :class:`PytestPluginManager`."""
-        pluginmanager.reprec = reprec = HookRecorder(pluginmanager, _ispytest=True)
+        pluginmanager.reprec = reprec = HookRecorder(pluginmanager, _ispytest=True)  # type: ignore[attr-defined]
         self._request.addfinalizer(reprec.finish_recording)
         return reprec
 
@@ -829,7 +829,7 @@ class Pytester:
         return self._makefile(ext, args, kwargs)
 
     def makeconftest(self, source: str) -> Path:
-        """Write a contest.py file.
+        """Write a conftest.py file.
 
         :param source: The contents.
         :returns: The conftest.py file.
