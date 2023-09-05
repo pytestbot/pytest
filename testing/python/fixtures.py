@@ -4534,11 +4534,6 @@ def test_yield_fixture_with_no_value(pytester: Pytester) -> None:
     assert result.ret == ExitCode.TESTS_FAILED
 
 
-@pytest.mark.xfail(
-    reason="fixtureclosure should get updated before fixtures.py::pytest_generate_tests"
-    " and after modifying arg2fixturedefs when there's direct"
-    " dynamic parametrize. This gets solved by PR#11220"
-)
 def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
     pytester.makeconftest(
         """
