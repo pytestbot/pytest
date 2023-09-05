@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from _pytest.compat import getfuncargnames
 from _pytest.config import ExitCode
+from _pytest.fixtures import deduplicate_names
 from _pytest.fixtures import TopRequest
 from _pytest.monkeypatch import MonkeyPatch
 from _pytest.pytester import get_public_names
@@ -4709,7 +4710,7 @@ def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pyte
 
 
 def test_deduplicate_names(pytester: Pytester) -> None:
-    items = fixtures.deduplicate_names("abacd")
+    items = deduplicate_names("abacd")
     assert items == ("a", "b", "c", "d")
-    items = fixtures.deduplicate_names(items + ("g", "f", "g", "e", "b"))
+    items = deduplicate_names(items + ("g", "f", "g", "e", "b"))
     assert items == ("a", "b", "c", "d", "g", "f", "e")
