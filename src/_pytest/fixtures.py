@@ -882,7 +882,6 @@ def _eval_scope_callable(
     return result
 
 
-@final
 class FixtureDef(Generic[FixtureValue]):
     """A container for a fixture definition.
 
@@ -1022,6 +1021,24 @@ class FixtureDef(Generic[FixtureValue]):
     def __repr__(self) -> str:
         return "<FixtureDef argname={!r} scope={!r} baseid={!r}>".format(
             self.argname, self.scope, self.baseid
+        )
+
+
+class IdentityFixture(FixtureDef[FixtureValue]):
+    def __init__(
+        self,
+        fixturemanager: "FixtureManager",
+        argname: str,
+        scope: Union[Scope, _ScopeName, Callable[[str, Config], _ScopeName], None],
+    ):
+        super().__init__(
+            fixturemanager,
+            "",
+            argname,
+            lambda request: request.param,
+            scope,
+            None,
+            _ispytest=True,
         )
 
 
@@ -1488,10 +1505,7 @@ class FixtureManager:
                         arg2fixturedefs[argname] = fixturedefs
                 else:
                     fixturedefs = arg2fixturedefs[argname]
-                if fixturedefs and not (
-                    fixturedefs[-1].func.__name__ == "get_direct_param_fixture_func"
-                    and fixturedefs[-1].baseid == ""
-                ):
+                if fixturedefs and not isinstance(fixturedefs[-1], IdentityFixture):
                     fixturenames_closure = deduplicate_names(
                         fixturenames_closure + arg2fixturedefs[argname][-1].argnames
                     )

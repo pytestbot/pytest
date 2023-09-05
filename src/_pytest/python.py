@@ -60,9 +60,9 @@ from _pytest.deprecated import INSTANCE_COLLECTOR
 from _pytest.deprecated import NOSE_SUPPORT_METHOD
 from _pytest.fixtures import _get_direct_parametrize_args
 from _pytest.fixtures import FixtureDef
-from _pytest.fixtures import FixtureRequest
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
+from _pytest.fixtures import IdentityFixture
 from _pytest.main import Session
 from _pytest.mark import MARK_GEN
 from _pytest.mark import ParameterSet
@@ -1184,10 +1184,6 @@ class CallSpec2:
         return "-".join(self._idlist)
 
 
-def get_direct_param_fixture_func(request: FixtureRequest) -> Any:
-    return request.param
-
-
 # Used for storing pseudo fixturedefs for direct parametrization.
 name2pseudofixturedef_key = StashKey[Dict[str, FixtureDef[Any]]]()
 
@@ -1387,16 +1383,8 @@ class Metafunc:
             if name2pseudofixturedef is not None and argname in name2pseudofixturedef:
                 fixturedef = name2pseudofixturedef[argname]
             else:
-                fixturedef = FixtureDef(
-                    fixturemanager=self.definition.session._fixturemanager,
-                    baseid="",
-                    argname=argname,
-                    func=get_direct_param_fixture_func,
-                    scope=scope_,
-                    params=None,
-                    unittest=False,
-                    ids=None,
-                    _ispytest=True,
+                fixturedef = IdentityFixture(
+                    self.definition.session._fixturemanager, argname, scope_
                 )
                 if name2pseudofixturedef is not None:
                     name2pseudofixturedef[argname] = fixturedef
