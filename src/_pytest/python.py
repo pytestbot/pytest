@@ -1376,7 +1376,10 @@ class Metafunc:
                 fixturedef = name2pseudofixturedef[argname]
             else:
                 fixturedef = IdentityFixture(
-                    self.definition.session._fixturemanager, argname, scope_
+                    self.definition.session._fixturemanager,
+                    argname,
+                    scope_,
+                    _ispytest=True,
                 )
                 if name2pseudofixturedef is not None:
                     name2pseudofixturedef[argname] = fixturedef

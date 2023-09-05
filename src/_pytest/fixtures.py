@@ -1079,6 +1079,8 @@ class IdentityFixture(FixtureDef[FixtureValue]):
         fixturemanager: "FixtureManager",
         argname: str,
         scope: Union[Scope, _ScopeName, Callable[[str, Config], _ScopeName], None],
+        *,
+        _ispytest: bool = False,
     ):
         super().__init__(
             fixturemanager,
@@ -1087,7 +1089,7 @@ class IdentityFixture(FixtureDef[FixtureValue]):
             lambda request: request.param,
             scope,
             None,
-            _ispytest=True,
+            _ispytest=_ispytest,
         )
 
 
