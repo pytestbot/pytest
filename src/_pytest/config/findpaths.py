@@ -15,6 +15,7 @@ from .exceptions import UsageError
 from _pytest.outcomes import fail
 from _pytest.pathlib import absolutepath
 from _pytest.pathlib import commonpath
+from _pytest.pathlib import safe_exists
 
 
 def _parse_ini_config(path: Path) -> iniconfig.IniConfig:
@@ -146,14 +147,6 @@ def get_dirs_from_args(args: Iterable[str]) -> List[Path]:
         if path.is_dir():
             return path
         return path.parent
-
-    def safe_exists(path: Path) -> bool:
-        # This can throw on paths that contain characters unrepresentable at the OS level,
-        # or with invalid syntax on Windows (https://bugs.python.org/issue35306)
-        try:
-            return path.exists()
-        except OSError:
-            return False
 
     # These look like paths but may not exist
     possible_paths = (

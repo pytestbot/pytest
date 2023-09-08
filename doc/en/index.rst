@@ -2,7 +2,6 @@
 
 .. sidebar:: Next Open Trainings
 
-   - `pytest: Professionelles Testen (nicht nur) für Python <https://workshoptage.ch/workshops/2023/pytest-professionelles-testen-nicht-nur-fuer-python-2/>`_, at `Workshoptage 2023 <https://workshoptage.ch/>`_, **September 5th**, `OST <https://www.ost.ch/en>`_ Campus **Rapperswil, Switzerland**
    - `Professional Testing with Python <https://python-academy.com/courses/python_course_testing.html>`_, via `Python Academy <https://www.python-academy.com/>`_, **March 5th to 7th 2024** (3 day in-depth training), **Leipzig, Germany / Remote**
 
    Also see :doc:`previous talks and blogposts <talks>`.

@@ -4704,8 +4704,8 @@ def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pyte
     reprec.assertoutcome(passed=5)
 
 
-def test_deduplicate_names(pytester: Pytester) -> None:
+def test_deduplicate_names() -> None:
     items = deduplicate_names("abacd")
     assert items == ("a", "b", "c", "d")
-    items = deduplicate_names(items + ("g", "f", "g", "e", "b"))
+    items = deduplicate_names(items, ("g", "f", "g", "e", "b"))
     assert items == ("a", "b", "c", "d", "g", "f", "e")

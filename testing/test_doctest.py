@@ -482,6 +482,24 @@ class TestDoctests:
         reprec = pytester.inline_run(p, "--doctest-modules")
         reprec.assertoutcome(failed=1)
 
+    def test_doctest_cached_property(self, pytester: Pytester):
+        p = pytester.makepyfile(
+            """
+            import functools
+
+            class Foo:
+                @functools.cached_property
+                def foo(self):
+                    '''
+                    >>> assert False, "Tacos!"
+                    '''
+                    ...
+        """
+        )
+        result = pytester.runpytest(p, "--doctest-modules")
+        result.assert_outcomes(failed=1)
+        assert "Tacos!" in result.stdout.str()
+
     def test_doctestmodule_external_and_issue116(self, pytester: Pytester):
         p = pytester.mkpydir("hello")
         p.joinpath("__init__.py").write_text(

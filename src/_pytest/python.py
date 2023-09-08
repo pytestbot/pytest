@@ -475,7 +475,9 @@ class PyCollector(PyobjMixin, nodes.Collector):
         clscol = self.getparent(Class)
         cls = clscol and clscol.obj or None
 
-        definition = FunctionDefinition.from_parent(self, name=name, callobj=funcobj)
+        definition: FunctionDefinition = FunctionDefinition.from_parent(
+            self, name=name, callobj=funcobj
+        )
         fixtureinfo = definition._fixtureinfo
 
         metafunc = Metafunc(
@@ -1128,9 +1130,9 @@ class CallSpec2:
     # arg name -> arg index.
     indices: Dict[str, int] = dataclasses.field(default_factory=dict)
     # Used for sorting parametrized resources.
-    _arg2scope: Dict[str, Scope] = dataclasses.field(default_factory=dict)
+    _arg2scope: Mapping[str, Scope] = dataclasses.field(default_factory=dict)
     # Parts which will be added to the item's name in `[..]` separated by "-".
-    _idlist: List[str] = dataclasses.field(default_factory=list)
+    _idlist: Sequence[str] = dataclasses.field(default_factory=tuple)
     # Marks which will be applied to the item.
     marks: List[Mark] = dataclasses.field(default_factory=list)
 
@@ -1146,7 +1148,7 @@ class CallSpec2:
     ) -> "CallSpec2":
         params = self.params.copy()
         indices = self.indices.copy()
-        arg2scope = self._arg2scope.copy()
+        arg2scope = dict(self._arg2scope)
         for arg, val in zip(argnames, valset):
             if arg in params:
                 raise ValueError(f"duplicate parametrization of {arg!r}")
@@ -1546,12 +1548,8 @@ class Metafunc:
 
     def update_dependency_tree(self) -> None:
         definition = self.definition
-        (
-            fixture_closure,
-            _,
-        ) = cast(
-            nodes.Node, definition.parent
-        ).session._fixturemanager.getfixtureclosure(
+        fm = cast(nodes.Node, definition.parent).session._fixturemanager
+        fixture_closure, _ = fm.getfixtureclosure(
             definition,
             definition._fixtureinfo.initialnames,
             definition._fixtureinfo.name2fixturedefs,
@@ -1813,9 +1811,8 @@ class Function(PyobjMixin, nodes.Item):
             self.keywords.update(keywords)
 
         if fixtureinfo is None:
-            fixtureinfo = self.session._fixturemanager.getfixtureinfo(
-                self, self.obj, self.cls, funcargs=True
-            )
+            fm = self.session._fixturemanager
+            fixtureinfo = fm.getfixtureinfo(self, self.obj, self.cls)
         self._fixtureinfo: FuncFixtureInfo = fixtureinfo
         self.fixturenames = fixtureinfo.names_closure
         self._initrequest()

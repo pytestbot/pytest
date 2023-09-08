@@ -59,6 +59,7 @@ from _pytest.pathlib import bestrelpath
 from _pytest.pathlib import import_path
 from _pytest.pathlib import ImportMode
 from _pytest.pathlib import resolve_package_path
+from _pytest.pathlib import safe_exists
 from _pytest.stash import Stash
 from _pytest.warning_types import PytestConfigWarning
 from _pytest.warning_types import warn_explicit_for
@@ -562,12 +563,8 @@ class PytestPluginManager(PluginManager):
             anchor = absolutepath(current / path)
 
             # Ensure we do not break if what appears to be an anchor
-            # is in fact a very long option (#10169).
-            try:
-                anchor_exists = anchor.exists()
-            except OSError:  # pragma: no cover
-                anchor_exists = False
-            if anchor_exists:
+            # is in fact a very long option (#10169, #11394).
+            if safe_exists(anchor):
                 self._try_load_conftest(anchor, importmode, rootpath)
                 foundanchor = True
         if not foundanchor:

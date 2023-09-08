@@ -28,6 +28,31 @@ with advance notice in the **Deprecations** section of releases.
 
 .. towncrier release notes start
 
+pytest 7.4.2 (2023-09-07)
+=========================
+
+Bug Fixes
+---------
+
+- `#11237 <https://github.com/pytest-dev/pytest/issues/11237>`_: Fix doctest collection of `functools.cached_property` objects.
+
+
+- `#11306 <https://github.com/pytest-dev/pytest/issues/11306>`_: Fixed bug using ``--importmode=importlib`` which would cause package ``__init__.py`` files to be imported more than once in some cases.
+
+
+- `#11367 <https://github.com/pytest-dev/pytest/issues/11367>`_: Fixed bug where `user_properties` where not being saved in the JUnit XML file if a fixture failed during teardown.
+
+
+- `#11394 <https://github.com/pytest-dev/pytest/issues/11394>`_: Fixed crash when parsing long command line arguments that might be interpreted as files.
+
+
+
+Improved Documentation
+----------------------
+
+- `#11391 <https://github.com/pytest-dev/pytest/issues/11391>`_: Improved disclaimer on pytest plugin reference page to better indicate this is an automated, non-curated listing.
+
+
 pytest 7.4.1 (2023-09-02)
 =========================
 

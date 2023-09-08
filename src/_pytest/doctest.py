@@ -1,5 +1,6 @@
 """Discover and run doctests in modules and test files."""
 import bdb
+import functools
 import inspect
 import os
 import platform
@@ -254,14 +255,20 @@ class DoctestItem(Item):
         self,
         name: str,
         parent: "Union[DoctestTextfile, DoctestModule]",
-        runner: Optional["doctest.DocTestRunner"] = None,
-        dtest: Optional["doctest.DocTest"] = None,
+        runner: "doctest.DocTestRunner",
+        dtest: "doctest.DocTest",
     ) -> None:
         super().__init__(name, parent)
         self.runner = runner
         self.dtest = dtest
+
+        # Stuff needed for fixture support.
         self.obj = None
-        self.fixture_request: Optional[TopRequest] = None
+        fm = self.session._fixturemanager
+        fixtureinfo = fm.getfixtureinfo(node=self, func=None, cls=None)
+        self._fixtureinfo = fixtureinfo
+        self.fixturenames = fixtureinfo.names_closure
+        self._initrequest()
 
     @classmethod
     def from_parent(  # type: ignore
@@ -276,19 +283,18 @@ class DoctestItem(Item):
         """The public named constructor."""
         return super().from_parent(name=name, parent=parent, runner=runner, dtest=dtest)
 
+    def _initrequest(self) -> None:
+        self.funcargs: Dict[str, object] = {}
+        self._request = TopRequest(self, _ispytest=True)  # type: ignore[arg-type]
+
     def setup(self) -> None:
-        if self.dtest is not None:
-            self.fixture_request = _setup_fixtures(self)
-            globs = dict(getfixture=self.fixture_request.getfixturevalue)
-            for name, value in self.fixture_request.getfixturevalue(
-                "doctest_namespace"
-            ).items():
-                globs[name] = value
-            self.dtest.globs.update(globs)
+        self._request._fillfixtures()
+        globs = dict(getfixture=self._request.getfixturevalue)
+        for name, value in self._request.getfixturevalue("doctest_namespace").items():
+            globs[name] = value
+        self.dtest.globs.update(globs)
 
     def runtest(self) -> None:
-        assert self.dtest is not None
-        assert self.runner is not None
         _check_all_skipped(self.dtest)
         self._disable_output_capturing_for_darwin()
         failures: List["doctest.DocTestFailure"] = []
@@ -375,7 +381,6 @@ class DoctestItem(Item):
         return ReprFailDoctest(reprlocation_lines)
 
     def reportinfo(self) -> Tuple[Union["os.PathLike[str]", str], Optional[int], str]:
-        assert self.dtest is not None
         return self.path, self.dtest.lineno, "[doctest] %s" % self.name
 
 
@@ -395,8 +400,8 @@ def _get_flag_lookup() -> Dict[str, int]:
     )
 
 
-def get_optionflags(parent):
-    optionflags_str = parent.config.getini("doctest_optionflags")
+def get_optionflags(config: Config) -> int:
+    optionflags_str = config.getini("doctest_optionflags")
     flag_lookup_table = _get_flag_lookup()
     flag_acc = 0
     for flag in optionflags_str:
@@ -404,8 +409,8 @@ def get_optionflags(parent):
     return flag_acc
 
 
-def _get_continue_on_failure(config):
-    continue_on_failure = config.getvalue("doctest_continue_on_failure")
+def _get_continue_on_failure(config: Config) -> bool:
+    continue_on_failure: bool = config.getvalue("doctest_continue_on_failure")
     if continue_on_failure:
         # We need to turn off this if we use pdb since we should stop at
         # the first failure.
@@ -428,7 +433,7 @@ class DoctestTextfile(Module):
         name = self.path.name
         globs = {"__name__": "__main__"}
 
-        optionflags = get_optionflags(self)
+        optionflags = get_optionflags(self.config)
 
         runner = _get_runner(
             verbose=False,
@@ -536,6 +541,23 @@ class DoctestModule(Module):
                         tests, obj, name, module, source_lines, globs, seen
                     )
 
+            if sys.version_info < (3, 13):
+
+                def _from_module(self, module, object):
+                    """`cached_property` objects are never considered a part
+                    of the 'current module'. As such they are skipped by doctest.
+                    Here we override `_from_module` to check the underlying
+                    function instead. https://github.com/python/cpython/issues/107995
+                    """
+                    if isinstance(object, functools.cached_property):
+                        object = object.func
+
+                    # Type ignored because this is a private function.
+                    return super()._from_module(module, object)  # type: ignore[misc]
+
+            else:  # pragma: no cover
+                pass
+
         if self.path.name == "conftest.py":
             module = self.config.pluginmanager._importconftest(
                 self.path,
@@ -556,7 +578,7 @@ class DoctestModule(Module):
                     raise
         # Uses internal doctest module parsing mechanism.
         finder = MockAwareDocTestFinder()
-        optionflags = get_optionflags(self)
+        optionflags = get_optionflags(self.config)
         runner = _get_runner(
             verbose=False,
             optionflags=optionflags,
@@ -569,22 +591,6 @@ class DoctestModule(Module):
                 yield DoctestItem.from_parent(
                     self, name=test.name, runner=runner, dtest=test
                 )
-
-
-def _setup_fixtures(doctest_item: DoctestItem) -> TopRequest:
-    """Used by DoctestTextfile and DoctestItem to setup fixture information."""
-
-    def func() -> None:
-        pass
-
-    doctest_item.funcargs = {}  # type: ignore[attr-defined]
-    fm = doctest_item.session._fixturemanager
-    doctest_item._fixtureinfo = fm.getfixtureinfo(  # type: ignore[attr-defined]
-        node=doctest_item, func=func, cls=None, funcargs=False
-    )
-    fixture_request = TopRequest(doctest_item, _ispytest=True)  # type: ignore[arg-type]
-    fixture_request._fillfixtures()
-    return fixture_request
 
 
 def _init_checker_class() -> Type["doctest.OutputChecker"]:

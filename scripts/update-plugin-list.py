@@ -20,13 +20,25 @@ FILE_HEAD = r"""
 
 .. _plugin-list:
 
-Plugin List
-===========
+Pytest Plugin List
+==================
 
-PyPI projects that match "pytest-\*" are considered plugins and are listed
-automatically together with a manually-maintained list in `the source
-code <https://github.com/pytest-dev/pytest/blob/main/scripts/update-plugin-list.py>`_.
+Below is an automated compilation of ``pytest``` plugins available on `PyPI <https://pypi.org>`_.
+It includes PyPI projects whose names begin with "pytest-" and a handful of manually selected projects.
 Packages classified as inactive are excluded.
+
+For detailed insights into how this list is generated,
+please refer to `the update script <https://github.com/pytest-dev/pytest/blob/main/scripts/update-plugin-list.py>`_.
+
+.. warning::
+
+   Please be aware that this list is not a curated collection of projects
+   and does not undergo a systematic review process.
+   It serves purely as an informational resource to aid in the discovery of ``pytest`` plugins.
+
+   Do not presume any endorsement from the ``pytest`` project or its developers,
+   and always conduct your own quality assessment before incorporating any of these plugins into your own projects.
+
 
 .. The following conditional uses a different format for this list when
    creating a PDF, because otherwise the table gets far too wide for the

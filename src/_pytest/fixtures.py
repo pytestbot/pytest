@@ -8,6 +8,7 @@ from collections import defaultdict
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
+from typing import AbstractSet
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -210,16 +211,14 @@ def reorder_items(items: Sequence[nodes.Item]) -> List[nodes.Item]:
     argkeys_cache: Dict[Scope, Dict[nodes.Item, Dict[FixtureArgKey, None]]] = {}
     items_by_argkey: Dict[Scope, Dict[FixtureArgKey, Deque[nodes.Item]]] = {}
     for scope in HIGH_SCOPES:
-        d: Dict[nodes.Item, Dict[FixtureArgKey, None]] = {}
-        argkeys_cache[scope] = d
-        item_d: Dict[FixtureArgKey, Deque[nodes.Item]] = defaultdict(deque)
-        items_by_argkey[scope] = item_d
+        scoped_argkeys_cache = argkeys_cache[scope] = {}
+        scoped_items_by_argkey = items_by_argkey[scope] = defaultdict(deque)
         for item in items:
             keys = dict.fromkeys(get_parametrized_fixture_keys(item, scope), None)
             if keys:
-                d[item] = keys
+                scoped_argkeys_cache[item] = keys
                 for key in keys:
-                    item_d[key].append(item)
+                    scoped_items_by_argkey[key].append(item)
     items_dict = dict.fromkeys(items, None)
     return list(
         reorder_items_atscope(items_dict, argkeys_cache, items_by_argkey, Scope.Session)
@@ -380,7 +379,7 @@ class FixtureRequest(abc.ABC):
     @property
     def fixturenames(self) -> List[str]:
         """Names of all active fixtures in this request."""
-        result = list(self._pyfuncitem._fixtureinfo.names_closure)
+        result = list(self._pyfuncitem.fixturenames)
         result.extend(set(self._fixture_defs).difference(result))
         return result
 
@@ -660,8 +659,7 @@ class TopRequest(FixtureRequest):
 
     def _fillfixtures(self) -> None:
         item = self._pyfuncitem
-        fixturenames = getattr(item, "fixturenames", self.fixturenames)
-        for argname in fixturenames:
+        for argname in item.fixturenames:
             if argname not in item.funcargs:
                 item.funcargs[argname] = self.getfixturevalue(argname)
 
@@ -767,7 +765,10 @@ class SubRequest(FixtureRequest):
         # If the executing fixturedef was not explicitly requested in the argument list (via
         # getfixturevalue inside the fixture call) then ensure this fixture def will be finished
         # first.
-        if fixturedef.argname not in self.fixturenames:
+        if (
+            fixturedef.argname not in self._fixture_defs
+            and fixturedef.argname not in self._pyfuncitem.fixturenames
+        ):
             fixturedef.addfinalizer(
                 functools.partial(self._fixturedef.finish, request=self)
             )
@@ -1374,7 +1375,7 @@ def pytest_addoption(parser: Parser) -> None:
     )
 
 
-def _get_direct_parametrize_args(node: nodes.Node) -> List[str]:
+def _get_direct_parametrize_args(node: nodes.Node) -> Set[str]:
     """Return all direct parametrization arguments of a node, so we don't
     mistake them for fixtures.
 
@@ -1383,21 +1384,20 @@ def _get_direct_parametrize_args(node: nodes.Node) -> List[str]:
     These things are done later as well when dealing with parametrization
     so this could be improved.
     """
-    parametrize_argnames: List[str] = []
+    parametrize_argnames: Set[str] = set()
     for marker in node.iter_markers(name="parametrize"):
         if not marker.kwargs.get("indirect", False):
             p_argnames, _ = ParameterSet._parse_parametrize_args(
                 *marker.args, **marker.kwargs
             )
-            parametrize_argnames.extend(p_argnames)
-
+            parametrize_argnames.update(p_argnames)
     return parametrize_argnames
 
 
-def deduplicate_names(seq: Iterable[str]) -> Tuple[str, ...]:
+def deduplicate_names(*seqs: Iterable[str]) -> Tuple[str, ...]:
     """De-duplicate the sequence of names while keeping the original order."""
     # Ideally we would use a set, but it does not preserve insertion order.
-    return tuple(dict.fromkeys(seq))
+    return tuple(dict.fromkeys(name for seq in seqs for name in seq))
 
 
 class FixtureManager:
@@ -1452,13 +1452,12 @@ class FixtureManager:
     def getfixtureinfo(
         self,
         node: nodes.Item,
-        func: Callable[..., object],
+        func: Optional[Callable[..., object]],
         cls: Optional[type],
-        funcargs: bool = True,
     ) -> FuncFixtureInfo:
         """Calculate the :class:`FuncFixtureInfo` for an item.
 
-        If ``funcargs`` is false, or if the item sets an attribute
+        If ``func`` is None, or if the item sets an attribute
         ``nofuncargs = True``, then ``func`` is not examined at all.
 
         :param node:
@@ -1467,33 +1466,25 @@ class FixtureManager:
             The item's function.
         :param cls:
             If the function is a method, the method's class.
-        :param funcargs:
-            Whether to look into func's parameters as fixture requests.
         """
-        if funcargs and not getattr(node, "nofuncargs", False):
+        if func is not None and not getattr(node, "nofuncargs", False):
             argnames = getfuncargnames(func, name=node.name, cls=cls)
         else:
             argnames = ()
+        usefixturesnames = self._getusefixturesnames(node)
+        autousenames = self._getautousenames(node.nodeid)
+        initialnames = deduplicate_names(autousenames, usefixturesnames, argnames)
 
-        usefixtures = tuple(
-            arg for mark in node.iter_markers(name="usefixtures") for arg in mark.args
-        )
-        initialnames = deduplicate_names(
-            tuple(self._getautousenames(node.nodeid)) + usefixtures + argnames
-        )
+        direct_parametrize_args = _get_direct_parametrize_args(node)
 
         names_closure, arg2fixturedefs = self.getfixtureclosure(
-            node,
-            initialnames,
-            None,
-            ignore_args=_get_direct_parametrize_args(node),
+            parentnode=node,
+            initialnames=initialnames,
+            arg2fixturedefs=None,
+            ignore_args=direct_parametrize_args,
         )
-        return FuncFixtureInfo(
-            argnames,
-            initialnames,
-            names_closure,
-            arg2fixturedefs,
-        )
+
+        return FuncFixtureInfo(argnames, initialnames, names_closure, arg2fixturedefs)
 
     def pytest_plugin_registered(self, plugin: _PluggyPlugin) -> None:
         nodeid = None
@@ -1524,12 +1515,17 @@ class FixtureManager:
             if basenames:
                 yield from basenames
 
+    def _getusefixturesnames(self, node: nodes.Item) -> Iterator[str]:
+        """Return the names of usefixtures fixtures applicable to node."""
+        for mark in node.iter_markers(name="usefixtures"):
+            yield from mark.args
+
     def getfixtureclosure(
         self,
         parentnode: nodes.Node,
         initialnames: Tuple[str, ...],
         arg2fixturedefs: Union[Dict[str, Sequence[FixtureDef[Any]]], None],
-        ignore_args: Sequence[str] = (),
+        ignore_args: AbstractSet[str],
     ) -> Tuple[List[str], Dict[str, Sequence[FixtureDef[Any]]]]:
         # Collect the closure of all fixtures, starting with the given
         # initialnames containing function arguments, `usefixture` markers
@@ -1539,12 +1535,12 @@ class FixtureManager:
         # not have to re-discover fixturedefs again for each fixturename
         # (discovering matching fixtures for a given name/node is expensive).
 
-        fixturenames_closure = initialnames
-
         if arg2fixturedefs is None:
             arg2fixturedefs = {}
-        lastlen = -1
         parentid = parentnode.nodeid
+        fixturenames_closure = list(initialnames)
+
+        lastlen = -1
         while lastlen != len(fixturenames_closure):
             lastlen = len(fixturenames_closure)
             for argname in fixturenames_closure:
@@ -1557,9 +1553,9 @@ class FixtureManager:
                 else:
                     fixturedefs = arg2fixturedefs[argname]
                 if fixturedefs and not isinstance(fixturedefs[-1], IdentityFixture):
-                    fixturenames_closure = deduplicate_names(
-                        fixturenames_closure + arg2fixturedefs[argname][-1].argnames
-                    )
+                    for arg in fixturedefs[-1].argnames:
+                        if arg not in fixturenames_closure:
+                            fixturenames_closure.append(arg)
 
         def sort_by_scope(arg_name: str) -> Scope:
             try:
@@ -1569,10 +1565,8 @@ class FixtureManager:
             else:
                 return fixturedefs[-1]._scope
 
-        return (
-            sorted(fixturenames_closure, key=sort_by_scope, reverse=True),
-            arg2fixturedefs,
-        )
+        fixturenames_closure.sort(key=sort_by_scope, reverse=True)
+        return fixturenames_closure, arg2fixturedefs
 
     def pytest_generate_tests(self, metafunc: "Metafunc") -> None:
         """Generate new tests based on parametrized fixtures used by the given metafunc"""

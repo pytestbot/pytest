@@ -1,0 +1,1 @@
+Test functions returning a value other than None will now issue a :class:`pytest.PytestWarning` instead of :class:`pytest.PytestRemovedIn8Warning`, meaning this will stay a warning instead of becoming an error in the future.

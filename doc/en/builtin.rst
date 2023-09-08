@@ -105,7 +105,7 @@ For information about fixtures, see :ref:`fixtures`. To see a complete list of a
                 captured = capsys.readouterr()
                 assert captured.out == "hello\n"
 
-    doctest_namespace [session scope] -- .../_pytest/doctest.py:737
+    doctest_namespace [session scope] -- .../_pytest/doctest.py:757
         Fixture that returns a :py:class:`dict` that will be injected into the
         namespace of doctests.
 

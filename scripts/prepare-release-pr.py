@@ -31,10 +31,16 @@ class InvalidFeatureRelease(Exception):
 SLUG = "pytest-dev/pytest"
 
 PR_BODY = """\
-Created automatically from manual trigger.
+Created by the [prepare release pr](https://github.com/pytest-dev/pytest/actions/workflows/prepare-release-pr.yml)
+workflow.
 
-Once all builds pass and it has been **approved** by one or more maintainers, the build
-can be released by pushing a tag `{version}` to this repository.
+Once all builds pass and it has been **approved** by one or more maintainers,
+start the [deploy](https://github.com/pytest-dev/pytest/actions/workflows/deploy.yml) workflow, using these parameters:
+
+* `Use workflow from`: `release-{version}`.
+* `Release version`: `{version}`.
+
+After the `deploy` workflow has been approved by a core maintainer, the package will be uploaded to PyPI automatically.
 """
 
 

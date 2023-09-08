@@ -262,3 +262,34 @@ def test_module_full_path_without_drive(pytester: Pytester) -> None:
             "* 1 passed in *",
         ]
     )
+
+
+def test_very_long_cmdline_arg(pytester: Pytester) -> None:
+    """
+    Regression test for #11394.
+
+    Note: we could not manage to actually reproduce the error with this code, we suspect
+    GitHub runners are configured to support very long paths, however decided to leave
+    the test in place in case this ever regresses in the future.
+    """
+    pytester.makeconftest(
+        """
+        import pytest
+
+        def pytest_addoption(parser):
+            parser.addoption("--long-list", dest="long_list", action="store", default="all", help="List of things")
+
+        @pytest.fixture(scope="module")
+        def specified_feeds(request):
+            list_string = request.config.getoption("--long-list")
+            return list_string.split(',')
+        """
+    )
+    pytester.makepyfile(
+        """
+        def test_foo(specified_feeds):
+            assert len(specified_feeds) == 100_000
+        """
+    )
+    result = pytester.runpytest("--long-list", ",".join(["helloworld"] * 100_000))
+    result.stdout.fnmatch_lines("* 1 passed *")

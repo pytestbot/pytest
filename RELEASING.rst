@@ -134,7 +134,8 @@ Releasing
 Both automatic and manual processes described above follow the same steps from this point onward.
 
 #. After all tests pass and the PR has been approved, trigger the ``deploy`` job
-   in https://github.com/pytest-dev/pytest/actions/workflows/deploy.yml.
+   in https://github.com/pytest-dev/pytest/actions/workflows/deploy.yml, using the ``release-MAJOR.MINOR.PATCH`` branch
+   as source.
 
    This job will require approval from ``pytest-dev/core``, after which it will publish to PyPI
    and tag the repository.

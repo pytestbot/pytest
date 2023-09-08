@@ -61,7 +61,7 @@ class PytestRemovedIn9Warning(PytestDeprecationWarning):
     __module__ = "pytest"
 
 
-class PytestReturnNotNoneWarning(PytestRemovedIn8Warning):
+class PytestReturnNotNoneWarning(PytestWarning):
     """Warning emitted when a test function is returning value other than None."""
 
     __module__ = "pytest"
