@@ -4638,7 +4638,9 @@ def test_request_shouldnt_be_in_closure_after_pruning_dep_tree_when_its_not_in_i
     )
 
 
-def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pytester):
+def test_dont_recompute_dependency_tree_if_no_direct_dynamic_parametrize(
+    pytester: Pytester,
+):
     pytester.makeconftest(
         """
         import pytest
@@ -4667,6 +4669,10 @@ def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pyte
             if metafunc.definition.name == "test_0":
                 metafunc.parametrize("fixture", [0])
 
+            if metafunc.definition.name == "test_4":
+                metafunc.parametrize("fixture", [0], indirect=True)
+
+
         @pytest.fixture(scope='module')
         def fixture():
             pass
@@ -4685,23 +4691,27 @@ def test_dont_recompute_dependency_tree_if_no_dynamic_parametrize(pytester: Pyte
         def test_3(fixture):
             pass
 
+        def test_4(fixture):
+            pass
+
         @pytest.fixture
         def fm(request):
             yield request._fixturemanager
 
         def test(fm):
-            method = fm.getfixtureclosure
-            assert len(method.call_args_list) == 6
-            assert method.call_args_list[0].args[0].nodeid.endswith("test_0")
-            assert method.call_args_list[1].args[0].nodeid.endswith("test_0")
-            assert method.call_args_list[2].args[0].nodeid.endswith("test_1")
-            assert method.call_args_list[3].args[0].nodeid.endswith("test_2")
-            assert method.call_args_list[4].args[0].nodeid.endswith("test_3")
-            assert method.call_args_list[5].args[0].nodeid.endswith("test")
+            calls = fm.getfixtureclosure.call_args_list
+            assert len(calls) == 7
+            assert calls[0].kwargs["parentnode"].nodeid.endswith("test_0")
+            assert calls[1].kwargs["parentnode"].nodeid.endswith("test_0")
+            assert calls[2].kwargs["parentnode"].nodeid.endswith("test_1")
+            assert calls[3].kwargs["parentnode"].nodeid.endswith("test_2")
+            assert calls[4].kwargs["parentnode"].nodeid.endswith("test_3")
+            assert calls[5].kwargs["parentnode"].nodeid.endswith("test_4")
+            assert calls[6].kwargs["parentnode"].nodeid.endswith("test")
         """
     )
     reprec = pytester.inline_run()
-    reprec.assertoutcome(passed=5)
+    reprec.assertoutcome(passed=6)
 
 
 def test_deduplicate_names() -> None:

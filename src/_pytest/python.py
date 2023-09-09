@@ -1550,9 +1550,9 @@ class Metafunc:
         definition = self.definition
         fm = cast(nodes.Node, definition.parent).session._fixturemanager
         fixture_closure, _ = fm.getfixtureclosure(
-            definition,
-            definition._fixtureinfo.initialnames,
-            definition._fixtureinfo.name2fixturedefs,
+            parentnode=definition,
+            initialnames=definition._fixtureinfo.initialnames,
+            arg2fixturedefs=definition._fixtureinfo.name2fixturedefs,
             ignore_args=_get_direct_parametrize_args(definition),
         )
         definition._fixtureinfo.names_closure[:] = fixture_closure
