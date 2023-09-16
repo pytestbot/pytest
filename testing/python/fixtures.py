@@ -4535,6 +4535,11 @@ def test_yield_fixture_with_no_value(pytester: Pytester) -> None:
 
 
 def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
+    """
+    Item dependency tree should get prunned before `FixtureManager::pytest_generate_tests`
+    hook implementation because it attempts to parametrize on the fixtures in the
+    fixture closure.
+    """
     pytester.makeconftest(
         """
         import pytest
@@ -4559,11 +4564,7 @@ def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
             metafunc.parametrize("fixture2", [4, 5], scope='session')
 
         @pytest.fixture(scope='session')
-        def fixture4():
-            pass
-
-        @pytest.fixture(scope='session')
-        def fixture2(fixture3, fixture4):
+        def fixture2(fixture3):
             pass
 
         def test(fixture2):
@@ -4575,6 +4576,8 @@ def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
 
 
 def test_reordering_after_dynamic_parametrize(pytester: Pytester):
+    """Make sure that prunning dependency tree takes place correctly, regarding from
+    reordering's viewpoint."""
     pytester.makepyfile(
         """
         import pytest
@@ -4583,7 +4586,7 @@ def test_reordering_after_dynamic_parametrize(pytester: Pytester):
             if metafunc.definition.name == "test_0":
                 metafunc.parametrize("fixture2", [0])
 
-        @pytest.fixture(scope='module')
+        @pytest.fixture(scope='module', params=[0])
         def fixture1():
             pass
 
@@ -4615,6 +4618,9 @@ def test_reordering_after_dynamic_parametrize(pytester: Pytester):
 def test_request_shouldnt_be_in_closure_after_pruning_dep_tree_when_its_not_in_initial_closure(
     pytester: Pytester,
 ):
+    """Make sure that fixture `request` doesn't show up in the closure after prunning dependency
+    tree when it has not been there beforehand.
+    """
     pytester.makepyfile(
         """
         import pytest
@@ -4641,6 +4647,10 @@ def test_request_shouldnt_be_in_closure_after_pruning_dep_tree_when_its_not_in_i
 def test_dont_recompute_dependency_tree_if_no_direct_dynamic_parametrize(
     pytester: Pytester,
 ):
+    """We should not update item's dependency tree when there's no direct dynamic
+    parametrization, i.e. `metafunc.parametrize(indirect=False)`s in module/class specific
+    `pytest_generate_tests` hooks, for the sake of efficiency.
+    """
     pytester.makeconftest(
         """
         import pytest

@@ -14,7 +14,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Dict
 from typing import final
 from typing import Generator
@@ -63,7 +62,7 @@ from _pytest.fixtures import _get_direct_parametrize_args
 from _pytest.fixtures import FixtureDef
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
-from _pytest.fixtures import IdentityFixture
+from _pytest.fixtures import IdentityFixtureDef
 from _pytest.main import Session
 from _pytest.mark import MARK_GEN
 from _pytest.mark import ParameterSet
@@ -492,10 +491,14 @@ class PyCollector(PyobjMixin, nodes.Collector):
         def prune_dependency_tree_if_test_is_directly_parametrized(metafunc: Metafunc):
             # Direct (those with `indirect=False`) parametrizations taking place in
             # module/class-specific `pytest_generate_tests` hooks, a.k.a dynamic direct
-            # parametrizations, may have shadowed some fixtures so make sure we update what
-            # the function really needs.
-            if metafunc.has_direct_parametrization:
-                metafunc.update_dependency_tree()
+            # parametrizations using `metafunc.parametrize`, may have shadowed some
+            # fixtures, making some fixtures no longer reachable. Update the dependency
+            # tree to reflect what the item really needs.
+            # Note that direct parametrizations using `@pytest.mark.parametrize` have
+            # already been considered into making the closure using the `ignore_args`
+            # arg to `getfixtureclosure`.
+            if metafunc._has_direct_parametrization:
+                metafunc._update_dependency_tree()
 
         methods = [prune_dependency_tree_if_test_is_directly_parametrized]
         if hasattr(module, "pytest_generate_tests"):
@@ -1223,7 +1226,7 @@ class Metafunc:
         self._calls: List[CallSpec2] = []
 
         # Whether it's ever been directly parametrized, i.e. with `indirect=False`.
-        self.has_direct_parametrization = False
+        self._has_direct_parametrization = False
 
     def parametrize(
         self,
@@ -1373,11 +1376,11 @@ class Metafunc:
         for argname in argnames:
             if arg_directness[argname] == "indirect":
                 continue
-            self.has_direct_parametrization = True
+            self._has_direct_parametrization = True
             if name2pseudofixturedef is not None and argname in name2pseudofixturedef:
                 fixturedef = name2pseudofixturedef[argname]
             else:
-                fixturedef = IdentityFixture(
+                fixturedef = IdentityFixtureDef(
                     self.definition.session._fixturemanager,
                     argname,
                     scope_,
@@ -1546,10 +1549,11 @@ class Metafunc:
                         pytrace=False,
                     )
 
-    def update_dependency_tree(self) -> None:
+    def _update_dependency_tree(self) -> None:
         definition = self.definition
-        fm = cast(nodes.Node, definition.parent).session._fixturemanager
-        fixture_closure, _ = fm.getfixtureclosure(
+        assert definition.parent is not None
+        fm = definition.parent.session._fixturemanager
+        fixture_closure = fm.getfixtureclosure(
             parentnode=definition,
             initialnames=definition._fixtureinfo.initialnames,
             arg2fixturedefs=definition._fixtureinfo.name2fixturedefs,

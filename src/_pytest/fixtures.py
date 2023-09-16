@@ -1074,7 +1074,7 @@ class FixtureDef(Generic[FixtureValue]):
         )
 
 
-class IdentityFixture(FixtureDef[FixtureValue]):
+class IdentityFixtureDef(FixtureDef[FixtureValue]):
     def __init__(
         self,
         fixturemanager: "FixtureManager",
@@ -1476,11 +1476,11 @@ class FixtureManager:
         initialnames = deduplicate_names(autousenames, usefixturesnames, argnames)
 
         direct_parametrize_args = _get_direct_parametrize_args(node)
-
-        names_closure, arg2fixturedefs = self.getfixtureclosure(
+        arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]] = {}
+        names_closure = self.getfixtureclosure(
             parentnode=node,
             initialnames=initialnames,
-            arg2fixturedefs=None,
+            arg2fixturedefs=arg2fixturedefs,
             ignore_args=direct_parametrize_args,
         )
 
@@ -1524,9 +1524,9 @@ class FixtureManager:
         self,
         parentnode: nodes.Node,
         initialnames: Tuple[str, ...],
-        arg2fixturedefs: Union[Dict[str, Sequence[FixtureDef[Any]]], None],
+        arg2fixturedefs: Dict[str, Sequence[FixtureDef[Any]]],
         ignore_args: AbstractSet[str],
-    ) -> Tuple[List[str], Dict[str, Sequence[FixtureDef[Any]]]]:
+    ) -> List[str]:
         # Collect the closure of all fixtures, starting with the given
         # initialnames containing function arguments, `usefixture` markers
         # and `autouse` fixtures as the initial set.  As we have to visit all
@@ -1535,8 +1535,6 @@ class FixtureManager:
         # not have to re-discover fixturedefs again for each fixturename
         # (discovering matching fixtures for a given name/node is expensive).
 
-        if arg2fixturedefs is None:
-            arg2fixturedefs = {}
         parentid = parentnode.nodeid
         fixturenames_closure = list(initialnames)
 
@@ -1552,7 +1550,7 @@ class FixtureManager:
                         arg2fixturedefs[argname] = fixturedefs
                 else:
                     fixturedefs = arg2fixturedefs[argname]
-                if fixturedefs and not isinstance(fixturedefs[-1], IdentityFixture):
+                if fixturedefs and not isinstance(fixturedefs[-1], IdentityFixtureDef):
                     for arg in fixturedefs[-1].argnames:
                         if arg not in fixturenames_closure:
                             fixturenames_closure.append(arg)
@@ -1566,7 +1564,7 @@ class FixtureManager:
                 return fixturedefs[-1]._scope
 
         fixturenames_closure.sort(key=sort_by_scope, reverse=True)
-        return fixturenames_closure, arg2fixturedefs
+        return fixturenames_closure
 
     def pytest_generate_tests(self, metafunc: "Metafunc") -> None:
         """Generate new tests based on parametrized fixtures used by the given metafunc"""
