@@ -1,2 +1,0 @@
-markers are now considered in the reverse mro order to ensure base  class markers are considered first
-this resolves a regression.

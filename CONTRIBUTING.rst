@@ -197,8 +197,9 @@ Short version
 ~~~~~~~~~~~~~
 
 #. Fork the repository.
+#. Fetch tags from upstream if necessary (if you cloned only main `git fetch --tags https://github.com/pytest-dev/pytest`).
 #. Enable and install `pre-commit <https://pre-commit.com>`_ to ensure style-guides and code checks are followed.
-#. Follow **PEP-8** for naming and `black <https://github.com/psf/black>`_ for formatting.
+#. Follow `PEP-8 <https://www.python.org/dev/peps/pep-0008/>`_ for naming.
 #. Tests are run using ``tox``::
 
     tox -e linting,py39
@@ -236,6 +237,7 @@ Here is a simple overview, with pytest-specific bits:
 
     $ git clone git@github.com:YOUR_GITHUB_USERNAME/pytest.git
     $ cd pytest
+    $ git fetch --tags https://github.com/pytest-dev/pytest
     # now, create your own branch off "main":
 
         $ git checkout -b your-bugfix-branch-name main
@@ -280,7 +282,7 @@ Here is a simple overview, with pytest-specific bits:
    This command will run tests via the "tox" tool against Python 3.9
    and also perform "lint" coding-style checks.
 
-#. You can now edit your local working copy and run the tests again as necessary. Please follow PEP-8 for naming.
+#. You can now edit your local working copy and run the tests again as necessary. Please follow `PEP-8 <https://www.python.org/dev/peps/pep-0008/>`_ for naming.
 
    You can pass different options to ``tox``. For example, to run tests on Python 3.9 and pass options to pytest
    (e.g. enter pdb on failure) to pytest you can do::

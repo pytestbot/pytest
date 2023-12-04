@@ -20,7 +20,7 @@
     :target: https://codecov.io/gh/pytest-dev/pytest
     :alt: Code coverage Status
 
-.. image:: https://github.com/pytest-dev/pytest/workflows/test/badge.svg
+.. image:: https://github.com/pytest-dev/pytest/actions/workflows/test.yml/badge.svg
     :target: https://github.com/pytest-dev/pytest/actions?query=workflow%3Atest
 
 .. image:: https://results.pre-commit.ci/badge/github/pytest-dev/pytest/main.svg

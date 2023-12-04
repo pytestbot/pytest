@@ -776,13 +776,13 @@ class TestSorting:
         pytester.makepyfile(
             """\
             class Test1:
-                def test_foo(): pass
-                def test_bar(): pass
+                def test_foo(self): pass
+                def test_bar(self): pass
             class Test2:
-                def test_foo(): pass
+                def test_foo(self): pass
                 test_bar = Test1.test_bar
             class Test3(Test2):
-                def test_baz(): pass
+                def test_baz(self): pass
             """
         )
         result = pytester.runpytest("--collect-only")

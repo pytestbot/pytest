@@ -42,6 +42,14 @@ def pytest_addoption(parser: Parser) -> None:
         help="Enables the pytest_assertion_pass hook. "
         "Make sure to delete any previously generated pyc cache files.",
     )
+    Config._add_verbosity_ini(
+        parser,
+        Config.VERBOSITY_ASSERTIONS,
+        help=(
+            "Specify a verbosity level for assertions, overriding the main level. "
+            "Higher levels will provide more detailed explanation when an assertion fails."
+        ),
+    )
 
 
 def register_assert_rewrite(*names: str) -> None:

@@ -1,0 +1,11 @@
+Sanitized the handling of the ``default`` parameter when defining configuration options.
+
+Previously if ``default`` was not supplied for :meth:`parser.addini <pytest.Parser.addini>` and the configuration option value was not defined in a test session, then calls to :func:`config.getini <pytest.Config.getini>` returned an *empty list* or an *empty string* depending on whether ``type`` was supplied or not respectively, which is clearly incorrect. Also, ``None`` was not honored even if ``default=None`` was used explicitly while defining the option.
+
+Now the behavior of :meth:`parser.addini <pytest.Parser.addini>` is as follows:
+
+* If ``default`` is NOT passed but ``type`` is provided, then a type-specific default will be returned. For example ``type=bool`` will return ``False``, ``type=str`` will return ``""``, etc.
+* If ``default=None`` is passed and the option is not defined in a test session, then ``None`` will be returned, regardless of the ``type``.
+* If neither ``default`` nor ``type`` are provided, assume ``type=str`` and return ``""`` as default (this is as per previous behavior).
+
+The team decided to not introduce a deprecation period for this change, as doing so would be complicated both in terms of communicating this to the community as well as implementing it, and also because the team believes this change should not break existing plugins except in rare cases.

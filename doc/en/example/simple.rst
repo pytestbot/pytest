@@ -1090,4 +1090,4 @@ application with standard ``pytest`` command-line options:
 
 .. code-block:: bash
 
-    ./app_main --pytest --verbose --tb=long --junitxml=results.xml test-suite/
+    ./app_main --pytest --verbose --tb=long --junit=xml=results.xml test-suite/

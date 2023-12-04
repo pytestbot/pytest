@@ -1,0 +1,4 @@
+Parametrized tests now *really do* ensure that the ids given to each input are unique - for
+example, ``a, a, a0`` now results in ``a1, a2, a0`` instead of the previous (buggy) ``a0, a1, a0``.
+This necessarily means changing nodeids where these were previously colliding, and for
+readability adds an underscore when non-unique ids end in a number.

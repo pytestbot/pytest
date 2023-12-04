@@ -13,6 +13,7 @@ import struct
 import sys
 import tokenize
 import types
+from collections import defaultdict
 from pathlib import Path
 from pathlib import PurePath
 from typing import Callable
@@ -45,12 +46,19 @@ if TYPE_CHECKING:
     from _pytest.assertion import AssertionState
 
 
+class Sentinel:
+    pass
+
+
 assertstate_key = StashKey["AssertionState"]()
 
 # pytest caches rewritten pycs in pycache dirs
 PYTEST_TAG = f"{sys.implementation.cache_tag}-pytest-{version}"
 PYC_EXT = ".py" + (__debug__ and "c" or "o")
 PYC_TAIL = "." + PYTEST_TAG + PYC_EXT
+
+# Special marker that denotes we have just left a scope definition
+_SCOPE_END_MARKER = Sentinel()
 
 
 class AssertionRewritingHook(importlib.abc.MetaPathFinder, importlib.abc.Loader):
@@ -418,7 +426,10 @@ def _saferepr(obj: object) -> str:
 
 def _get_maxsize_for_saferepr(config: Optional[Config]) -> Optional[int]:
     """Get `maxsize` configuration for saferepr based on the given config object."""
-    verbosity = config.getoption("verbose") if config is not None else 0
+    if config is None:
+        verbosity = 0
+    else:
+        verbosity = config.get_verbosity(Config.VERBOSITY_ASSERTIONS)
     if verbosity >= 2:
         return None
     if verbosity >= 1:
@@ -634,6 +645,8 @@ class AssertionRewriter(ast.NodeVisitor):
        .push_format_context() and .pop_format_context() which allows
        to build another %-formatted string while already building one.
 
+    :scope: A tuple containing the current scope used for variables_overwrite.
+
     :variables_overwrite: A dict filled with references to variables
        that change value within an assert. This happens when a variable is
        reassigned with the walrus operator
@@ -655,7 +668,10 @@ class AssertionRewriter(ast.NodeVisitor):
         else:
             self.enable_assertion_pass_hook = False
         self.source = source
-        self.variables_overwrite: Dict[str, str] = {}
+        self.scope: tuple[ast.AST, ...] = ()
+        self.variables_overwrite: defaultdict[
+            tuple[ast.AST, ...], Dict[str, str]
+        ] = defaultdict(dict)
 
     def run(self, mod: ast.Module) -> None:
         """Find all assert statements in *mod* and rewrite them."""
@@ -719,9 +735,17 @@ class AssertionRewriter(ast.NodeVisitor):
         mod.body[pos:pos] = imports
 
         # Collect asserts.
-        nodes: List[ast.AST] = [mod]
+        self.scope = (mod,)
+        nodes: List[Union[ast.AST, Sentinel]] = [mod]
         while nodes:
             node = nodes.pop()
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                self.scope = tuple((*self.scope, node))
+                nodes.append(_SCOPE_END_MARKER)
+            if node == _SCOPE_END_MARKER:
+                self.scope = self.scope[:-1]
+                continue
+            assert isinstance(node, ast.AST)
             for name, field in ast.iter_fields(node):
                 if isinstance(field, list):
                     new: List[ast.AST] = []
@@ -992,7 +1016,7 @@ class AssertionRewriter(ast.NodeVisitor):
                     ]
                 ):
                     pytest_temp = self.variable()
-                    self.variables_overwrite[
+                    self.variables_overwrite[self.scope][
                         v.left.target.id
                     ] = v.left  # type:ignore[assignment]
                     v.left.target.id = pytest_temp
@@ -1035,17 +1059,20 @@ class AssertionRewriter(ast.NodeVisitor):
         new_args = []
         new_kwargs = []
         for arg in call.args:
-            if isinstance(arg, ast.Name) and arg.id in self.variables_overwrite:
-                arg = self.variables_overwrite[arg.id]  # type:ignore[assignment]
+            if isinstance(arg, ast.Name) and arg.id in self.variables_overwrite.get(
+                self.scope, {}
+            ):
+                arg = self.variables_overwrite[self.scope][
+                    arg.id
+                ]  # type:ignore[assignment]
             res, expl = self.visit(arg)
             arg_expls.append(expl)
             new_args.append(res)
         for keyword in call.keywords:
-            if (
-                isinstance(keyword.value, ast.Name)
-                and keyword.value.id in self.variables_overwrite
-            ):
-                keyword.value = self.variables_overwrite[
+            if isinstance(
+                keyword.value, ast.Name
+            ) and keyword.value.id in self.variables_overwrite.get(self.scope, {}):
+                keyword.value = self.variables_overwrite[self.scope][
                     keyword.value.id
                 ]  # type:ignore[assignment]
             res, expl = self.visit(keyword.value)
@@ -1081,12 +1108,14 @@ class AssertionRewriter(ast.NodeVisitor):
     def visit_Compare(self, comp: ast.Compare) -> Tuple[ast.expr, str]:
         self.push_format_context()
         # We first check if we have overwritten a variable in the previous assert
-        if isinstance(comp.left, ast.Name) and comp.left.id in self.variables_overwrite:
-            comp.left = self.variables_overwrite[
+        if isinstance(
+            comp.left, ast.Name
+        ) and comp.left.id in self.variables_overwrite.get(self.scope, {}):
+            comp.left = self.variables_overwrite[self.scope][
                 comp.left.id
             ]  # type:ignore[assignment]
         if isinstance(comp.left, ast.NamedExpr):
-            self.variables_overwrite[
+            self.variables_overwrite[self.scope][
                 comp.left.target.id
             ] = comp.left  # type:ignore[assignment]
         left_res, left_expl = self.visit(comp.left)
@@ -1106,7 +1135,7 @@ class AssertionRewriter(ast.NodeVisitor):
                 and next_operand.target.id == left_res.id
             ):
                 next_operand.target.id = self.variable()
-                self.variables_overwrite[
+                self.variables_overwrite[self.scope][
                     left_res.id
                 ] = next_operand  # type:ignore[assignment]
             next_res, next_expl = self.visit(next_operand)

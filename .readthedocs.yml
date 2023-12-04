@@ -9,6 +9,10 @@ python:
        path: .
      - requirements: doc/en/requirements.txt
 
+sphinx:
+  configuration: doc/en/conf.py
+  fail_on_warning: true
+
 build:
   os: ubuntu-20.04
   tools:

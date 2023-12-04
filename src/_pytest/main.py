@@ -7,6 +7,7 @@ import importlib
 import os
 import sys
 from pathlib import Path
+from typing import AbstractSet
 from typing import Callable
 from typing import Dict
 from typing import final
@@ -22,6 +23,8 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
+import pluggy
+
 import _pytest._code
 from _pytest import nodes
 from _pytest.config import Config
@@ -31,6 +34,7 @@ from _pytest.config import hookimpl
 from _pytest.config import PytestPluginManager
 from _pytest.config import UsageError
 from _pytest.config.argparsing import Parser
+from _pytest.config.compat import PathAwareHookProxy
 from _pytest.fixtures import FixtureManager
 from _pytest.outcomes import exit
 from _pytest.pathlib import absolutepath
@@ -429,11 +433,15 @@ def pytest_collection_modifyitems(items: List[nodes.Item], config: Config) -> No
 
 
 class FSHookProxy:
-    def __init__(self, pm: PytestPluginManager, remove_mods) -> None:
+    def __init__(
+        self,
+        pm: PytestPluginManager,
+        remove_mods: AbstractSet[object],
+    ) -> None:
         self.pm = pm
         self.remove_mods = remove_mods
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> pluggy.HookCaller:
         x = self.pm.subset_hook_caller(name, remove_plugins=self.remove_mods)
         self.__dict__[name] = x
         return x
@@ -546,7 +554,7 @@ class Session(nodes.FSCollector):
         path_ = path if isinstance(path, Path) else Path(path)
         return path_ in self._initialpaths
 
-    def gethookproxy(self, fspath: "os.PathLike[str]"):
+    def gethookproxy(self, fspath: "os.PathLike[str]") -> pluggy.HookRelay:
         # Optimization: Path(Path(...)) is much slower than isinstance.
         path = fspath if isinstance(fspath, Path) else Path(fspath)
         pm = self.config.pluginmanager
@@ -563,11 +571,10 @@ class Session(nodes.FSCollector):
         )
         my_conftestmodules = pm._getconftestmodules(path)
         remove_mods = pm._conftest_plugins.difference(my_conftestmodules)
+        proxy: pluggy.HookRelay
         if remove_mods:
-            # One or more conftests are not in use at this fspath.
-            from .config.compat import PathAwareHookProxy
-
-            proxy = PathAwareHookProxy(FSHookProxy(pm, remove_mods))
+            # One or more conftests are not in use at this path.
+            proxy = PathAwareHookProxy(FSHookProxy(pm, remove_mods))  # type: ignore[arg-type,assignment]
         else:
             # All plugins are active for this fspath.
             proxy = self.config.hook

@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 from typing import final
+from typing import Literal
 from typing import Optional
 from typing import Sequence
 from typing import TextIO
@@ -193,15 +194,21 @@ class TerminalWriter:
         for indent, new_line in zip(indents, new_lines):
             self.line(indent + new_line)
 
-    def _highlight(self, source: str) -> str:
-        """Highlight the given source code if we have markup support."""
+    def _highlight(
+        self, source: str, lexer: Literal["diff", "python"] = "python"
+    ) -> str:
+        """Highlight the given source if we have markup support."""
         from _pytest.config.exceptions import UsageError
 
         if not self.hasmarkup or not self.code_highlight:
             return source
         try:
             from pygments.formatters.terminal import TerminalFormatter
-            from pygments.lexers.python import PythonLexer
+
+            if lexer == "python":
+                from pygments.lexers.python import PythonLexer as Lexer
+            elif lexer == "diff":
+                from pygments.lexers.diff import DiffLexer as Lexer
             from pygments import highlight
             import pygments.util
         except ImportError:
@@ -210,7 +217,7 @@ class TerminalWriter:
             try:
                 highlighted: str = highlight(
                     source,
-                    PythonLexer(),
+                    Lexer(),
                     TerminalFormatter(
                         bg=os.getenv("PYTEST_THEME_MODE", "dark"),
                         style=os.getenv("PYTEST_THEME"),

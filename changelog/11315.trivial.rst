@@ -1,0 +1,3 @@
+The :fixture:`pytester` fixture now uses the :fixture:`monkeypatch` fixture to manage the current working directory.
+If you use ``pytester`` in combination with :func:`monkeypatch.undo() <pytest.MonkeyPatch.undo>`, the CWD might get restored.
+Use :func:`monkeypatch.context() <pytest.MonkeyPatch.context>` instead.

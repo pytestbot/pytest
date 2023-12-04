@@ -868,6 +868,9 @@ class TestLocalPath(CommonFSTests):
             py_path.strpath, str_path
         )
 
+    @pytest.mark.xfail(
+        reason="#11603", raises=(error.EEXIST, error.ENOENT), strict=False
+    )
     def test_make_numbered_dir_multiprocess_safe(self, tmpdir):
         # https://github.com/pytest-dev/py/issues/30
         with multiprocessing.Pool() as pool:
@@ -1080,14 +1083,14 @@ class TestImport:
         name = "pointsback123"
         ModuleType = type(os)
         p = tmpdir.ensure(name + ".py")
-        for ending in (".pyc", "$py.class", ".pyo"):
-            mod = ModuleType(name)
-            pseudopath = tmpdir.ensure(name + ending)
-            mod.__file__ = str(pseudopath)
-            monkeypatch.setitem(sys.modules, name, mod)
-            newmod = p.pyimport()
-            assert mod == newmod
-        monkeypatch.undo()
+        with monkeypatch.context() as mp:
+            for ending in (".pyc", "$py.class", ".pyo"):
+                mod = ModuleType(name)
+                pseudopath = tmpdir.ensure(name + ending)
+                mod.__file__ = str(pseudopath)
+                mp.setitem(sys.modules, name, mod)
+                newmod = p.pyimport()
+                assert mod == newmod
         mod = ModuleType(name)
         pseudopath = tmpdir.ensure(name + "123.py")
         mod.__file__ = str(pseudopath)

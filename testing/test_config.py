@@ -5,6 +5,7 @@ import re
 import sys
 import textwrap
 from pathlib import Path
+from typing import Any
 from typing import Dict
 from typing import List
 from typing import Sequence
@@ -21,6 +22,8 @@ from _pytest.config import Config
 from _pytest.config import ConftestImportFailure
 from _pytest.config import ExitCode
 from _pytest.config import parse_warning_filter
+from _pytest.config.argparsing import get_ini_default_for_type
+from _pytest.config.argparsing import Parser
 from _pytest.config.exceptions import UsageError
 from _pytest.config.findpaths import determine_setup
 from _pytest.config.findpaths import get_common_ancestor
@@ -856,6 +859,68 @@ class TestConfigAPI:
         values = config.getini("xy")
         assert len(values) == 2
         assert values == ["456", "123"]
+
+    def test_addini_default_values(self, pytester: Pytester) -> None:
+        """Tests the default values for configuration based on
+        config type
+        """
+
+        pytester.makeconftest(
+            """
+            def pytest_addoption(parser):
+                parser.addini("linelist1", "", type="linelist")
+                parser.addini("paths1", "", type="paths")
+                parser.addini("pathlist1", "", type="pathlist")
+                parser.addini("args1", "", type="args")
+                parser.addini("bool1", "", type="bool")
+                parser.addini("string1", "", type="string")
+                parser.addini("none_1", "", type="linelist", default=None)
+                parser.addini("none_2", "", default=None)
+                parser.addini("no_type", "")
+        """
+        )
+
+        config = pytester.parseconfig()
+        # default for linelist, paths, pathlist and args is []
+        value = config.getini("linelist1")
+        assert value == []
+        value = config.getini("paths1")
+        assert value == []
+        value = config.getini("pathlist1")
+        assert value == []
+        value = config.getini("args1")
+        assert value == []
+        # default for bool is False
+        value = config.getini("bool1")
+        assert value is False
+        # default for string is ""
+        value = config.getini("string1")
+        assert value == ""
+        # should return None if None is explicity set as default value
+        # irrespective of the type argument
+        value = config.getini("none_1")
+        assert value is None
+        value = config.getini("none_2")
+        assert value is None
+        # in case no type is provided and no default set
+        # treat it as string and default value will be ""
+        value = config.getini("no_type")
+        assert value == ""
+
+    @pytest.mark.parametrize(
+        "type, expected",
+        [
+            pytest.param(None, "", id="None"),
+            pytest.param("string", "", id="string"),
+            pytest.param("paths", [], id="paths"),
+            pytest.param("pathlist", [], id="pathlist"),
+            pytest.param("args", [], id="args"),
+            pytest.param("linelist", [], id="linelist"),
+            pytest.param("bool", False, id="bool"),
+        ],
+    )
+    def test_get_ini_default_for_type(self, type: Any, expected: Any) -> None:
+        assert get_ini_default_for_type(type) == expected
 
     def test_confcutdir_check_isdir(self, pytester: Pytester) -> None:
         """Give an error if --confcutdir is not a valid directory (#2078)"""
@@ -1894,16 +1959,6 @@ def test_invocation_args(pytester: Pytester) -> None:
     ],
 )
 def test_config_blocked_default_plugins(pytester: Pytester, plugin: str) -> None:
-    if plugin == "debugging":
-        # Fixed in xdist (after 1.27.0).
-        # https://github.com/pytest-dev/pytest-xdist/pull/422
-        try:
-            import xdist  # noqa: F401
-        except ImportError:
-            pass
-        else:
-            pytest.skip("does not work with xdist currently")
-
     p = pytester.makepyfile("def test(): pass")
     result = pytester.runpytest(str(p), "-pno:%s" % plugin)
 
@@ -2180,4 +2235,77 @@ class TestDebugOptions:
                 "*file. This file is opened with 'w' and truncated as a*",
                 "*Default: pytestdebug.log.",
             ]
+        )
+
+
+class TestVerbosity:
+    SOME_OUTPUT_TYPE = Config.VERBOSITY_ASSERTIONS
+    SOME_OUTPUT_VERBOSITY_LEVEL = 5
+
+    class VerbosityIni:
+        def pytest_addoption(self, parser: Parser) -> None:
+            Config._add_verbosity_ini(
+                parser, TestVerbosity.SOME_OUTPUT_TYPE, help="some help text"
+            )
+
+    def test_level_matches_verbose_when_not_specified(
+        self, pytester: Pytester, tmp_path: Path
+    ) -> None:
+        tmp_path.joinpath("pytest.ini").write_text(
+            textwrap.dedent(
+                """\
+                [pytest]
+                addopts = --verbose
+                """
+            ),
+            encoding="utf-8",
+        )
+        pytester.plugins = [TestVerbosity.VerbosityIni()]
+
+        config = pytester.parseconfig(tmp_path)
+
+        assert (
+            config.get_verbosity(TestVerbosity.SOME_OUTPUT_TYPE)
+            == config.option.verbose
+        )
+
+    def test_level_matches_verbose_when_not_known_type(
+        self, pytester: Pytester, tmp_path: Path
+    ) -> None:
+        tmp_path.joinpath("pytest.ini").write_text(
+            textwrap.dedent(
+                """\
+                [pytest]
+                addopts = --verbose
+                """
+            ),
+            encoding="utf-8",
+        )
+        pytester.plugins = [TestVerbosity.VerbosityIni()]
+
+        config = pytester.parseconfig(tmp_path)
+
+        assert config.get_verbosity("some fake verbosity type") == config.option.verbose
+
+    def test_level_matches_specified_override(
+        self, pytester: Pytester, tmp_path: Path
+    ) -> None:
+        setting_name = f"verbosity_{TestVerbosity.SOME_OUTPUT_TYPE}"
+        tmp_path.joinpath("pytest.ini").write_text(
+            textwrap.dedent(
+                f"""\
+                [pytest]
+                addopts = --verbose
+                {setting_name} = {TestVerbosity.SOME_OUTPUT_VERBOSITY_LEVEL}
+                """
+            ),
+            encoding="utf-8",
+        )
+        pytester.plugins = [TestVerbosity.VerbosityIni()]
+
+        config = pytester.parseconfig(tmp_path)
+
+        assert (
+            config.get_verbosity(TestVerbosity.SOME_OUTPUT_TYPE)
+            == TestVerbosity.SOME_OUTPUT_VERBOSITY_LEVEL
         )

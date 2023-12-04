@@ -192,7 +192,7 @@ class TestDeprecatedCall:
                     f()
 
     @pytest.mark.parametrize(
-        "warning_type", [PendingDeprecationWarning, DeprecationWarning]
+        "warning_type", [PendingDeprecationWarning, DeprecationWarning, FutureWarning]
     )
     @pytest.mark.parametrize("mode", ["context_manager", "call"])
     @pytest.mark.parametrize("call_f_first", [True, False])
@@ -221,7 +221,6 @@ class TestDeprecatedCall:
             UserWarning,
             SyntaxWarning,
             RuntimeWarning,
-            FutureWarning,
             ImportWarning,
             UnicodeWarning,
         ]

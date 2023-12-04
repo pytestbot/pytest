@@ -136,7 +136,7 @@ Or select multiple nodes:
 
     Node IDs for failing tests are displayed in the test summary info
     when running pytest with the ``-rf`` option.  You can also
-    construct Node IDs from the output of ``pytest --collectonly``.
+    construct Node IDs from the output of ``pytest --collect-only``.
 
 Using ``-k expr`` to select tests based on their name
 -------------------------------------------------------

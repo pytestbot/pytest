@@ -20,13 +20,13 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         persist-credentials: false
 
     - name: Build and Check Package
-      uses: hynek/build-and-inspect-python-package@v1.5
+      uses: hynek/build-and-inspect-python-package@v1.5.4
 
   deploy:
     if: github.repository == 'pytest-dev/pytest'
@@ -38,7 +38,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Download Package
       uses: actions/download-artifact@v3
@@ -47,14 +47,14 @@ jobs:
         path: dist
 
     - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.8.10
+      uses: pypa/gh-action-pypi-publish@v1.8.11
 
     - name: Push tag
       run: |
         git config user.name "pytest bot"
         git config user.email "pytestbot@gmail.com"
-        git tag --annotate --message=v${{ github.event.inputs.version }} v${{ github.event.inputs.version }} ${{ github.sha }}
-        git push origin v${{ github.event.inputs.version }}
+        git tag --annotate --message=v${{ github.event.inputs.version }} ${{ github.event.inputs.version }} ${{ github.sha }}
+        git push origin ${{ github.event.inputs.version }}
 
   release-notes:
 
@@ -67,7 +67,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         persist-credentials: false

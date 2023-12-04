@@ -98,6 +98,27 @@ and if you need to have access to the actual exception info you may use:
 the actual exception raised.  The main attributes of interest are
 ``.type``, ``.value`` and ``.traceback``.
 
+Note that ``pytest.raises`` will match the exception type or any subclasses (like the standard ``except`` statement).
+If you want to check if a block of code is raising an exact exception type, you need to check that explicitly:
+
+
+.. code-block:: python
+
+    def test_foo_not_implemented():
+        def foo():
+            raise NotImplementedError
+
+        with pytest.raises(RuntimeError) as excinfo:
+            foo()
+        assert excinfo.type is RuntimeError
+
+The :func:`pytest.raises` call will succeed, even though the function raises :class:`NotImplementedError`, because
+:class:`NotImplementedError` is a subclass of :class:`RuntimeError`; however the following `assert` statement will
+catch the problem.
+
+Matching exception messages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 You can pass a ``match`` keyword parameter to the context-manager to test
 that a regular expression matches on the string representation of an exception
 (similar to the ``TestCase.assertRaisesRegex`` method from ``unittest``):
@@ -115,36 +136,111 @@ that a regular expression matches on the string representation of an exception
         with pytest.raises(ValueError, match=r".* 123 .*"):
             myfunc()
 
-The regexp parameter of the ``match`` method is matched with the ``re.search``
-function, so in the above example ``match='123'`` would have worked as
-well.
+Notes:
 
-There's an alternate form of the :func:`pytest.raises` function where you pass
-a function that will be executed with the given ``*args`` and ``**kwargs`` and
-assert that the given exception is raised:
+* The ``match`` parameter is matched with the :func:`re.search`
+  function, so in the above example ``match='123'`` would have worked as well.
+* The ``match`` parameter also matches against `PEP-678 <https://peps.python.org/pep-0678/>`__ ``__notes__``.
+
+
+Matching exception groups
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also use the :func:`excinfo.group_contains() <pytest.ExceptionInfo.group_contains>`
+method to test for exceptions returned as part of an ``ExceptionGroup``:
 
 .. code-block:: python
 
-    pytest.raises(ExpectedException, func, *args, **kwargs)
+    def test_exception_in_group():
+        with pytest.raises(RuntimeError) as excinfo:
+            raise ExceptionGroup(
+                "Group message",
+                [
+                    RuntimeError("Exception 123 raised"),
+                ],
+            )
+        assert excinfo.group_contains(RuntimeError, match=r".* 123 .*")
+        assert not excinfo.group_contains(TypeError)
+
+The optional ``match`` keyword parameter works the same way as for
+:func:`pytest.raises`.
+
+By default ``group_contains()`` will recursively search for a matching
+exception at any level of nested ``ExceptionGroup`` instances. You can
+specify a ``depth`` keyword parameter if you only want to match an
+exception at a specific level; exceptions contained directly in the top
+``ExceptionGroup`` would match ``depth=1``.
+
+.. code-block:: python
+
+    def test_exception_in_group_at_given_depth():
+        with pytest.raises(RuntimeError) as excinfo:
+            raise ExceptionGroup(
+                "Group message",
+                [
+                    RuntimeError(),
+                    ExceptionGroup(
+                        "Nested group",
+                        [
+                            TypeError(),
+                        ],
+                    ),
+                ],
+            )
+        assert excinfo.group_contains(RuntimeError, depth=1)
+        assert excinfo.group_contains(TypeError, depth=2)
+        assert not excinfo.group_contains(RuntimeError, depth=2)
+        assert not excinfo.group_contains(TypeError, depth=1)
+
+Alternate form (legacy)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+There is an alternate form where you pass
+a function that will be executed, along ``*args`` and ``**kwargs``, and :func:`pytest.raises`
+will execute the function with the arguments and assert that the given exception is raised:
+
+.. code-block:: python
+
+    def func(x):
+        if x <= 0:
+            raise ValueError("x needs to be larger than zero")
+
+
+    pytest.raises(ValueError, func, x=-1)
 
 The reporter will provide you with helpful output in case of failures such as *no
 exception* or *wrong exception*.
 
-Note that it is also possible to specify a "raises" argument to
-``pytest.mark.xfail``, which checks that the test is failing in a more
+This form was the original :func:`pytest.raises` API, developed before the ``with`` statement was
+added to the Python language. Nowadays, this form is rarely used, with the context-manager form (using ``with``)
+being considered more readable.
+Nonetheless, this form is fully supported and not deprecated in any way.
+
+xfail mark and pytest.raises
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is also possible to specify a ``raises`` argument to
+:ref:`pytest.mark.xfail <pytest.mark.xfail ref>`, which checks that the test is failing in a more
 specific way than just having any exception raised:
 
 .. code-block:: python
+
+    def f():
+        raise IndexError()
+
 
     @pytest.mark.xfail(raises=IndexError)
     def test_f():
         f()
 
-Using :func:`pytest.raises` is likely to be better for cases where you are
-testing exceptions your own code is deliberately raising, whereas using
-``@pytest.mark.xfail`` with a check function is probably better for something
-like documenting unfixed bugs (where the test describes what "should" happen)
-or bugs in dependencies.
+
+This will only "xfail" if the test fails by raising ``IndexError`` or subclasses.
+
+* Using :ref:`pytest.mark.xfail <pytest.mark.xfail ref>` with the ``raises`` parameter is probably better for something
+  like documenting unfixed bugs (where the test describes what "should" happen) or bugs in dependencies.
+
+* Using :func:`pytest.raises` is likely to be better for cases where you are
+  testing exceptions your own code is deliberately raising, which is the majority of cases.
 
 
 .. _`assertwarns`:

@@ -1,0 +1,1 @@
+Fixed the selftests to pass correctly if ``FORCE_COLOR``, ``NO_COLOR`` or ``PY_COLORS`` is set in the calling environment.

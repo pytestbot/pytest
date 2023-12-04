@@ -755,7 +755,13 @@ class LocalPath:
         if ensure:
             self.dirpath().ensure(dir=1)
         if encoding:
-            return error.checked_call(io.open, self.strpath, mode, encoding=encoding)
+            # Using type ignore here because of this error:
+            # error: Argument 1 has incompatible type overloaded function;
+            #   expected "Callable[[str, Any, Any], TextIOWrapper]"  [arg-type]
+            # Which seems incorrect, given io.open supports the given argument types.
+            return error.checked_call(
+                io.open, self.strpath, mode, encoding=encoding  # type:ignore[arg-type]
+            )
         return error.checked_call(open, self.strpath, mode)
 
     def _fastjoin(self, name):
@@ -1261,13 +1267,19 @@ class LocalPath:
     @classmethod
     def mkdtemp(cls, rootdir=None):
         """Return a Path object pointing to a fresh new temporary directory
-        (which we created ourself).
+        (which we created ourselves).
         """
         import tempfile
 
         if rootdir is None:
             rootdir = cls.get_temproot()
-        return cls(error.checked_call(tempfile.mkdtemp, dir=str(rootdir)))
+        # Using type ignore here because of this error:
+        # error: Argument 1 has incompatible type overloaded function; expected "Callable[[str], str]"  [arg-type]
+        # Which seems incorrect, given tempfile.mkdtemp supports the given argument types.
+        path = error.checked_call(
+            tempfile.mkdtemp, dir=str(rootdir)  # type:ignore[arg-type]
+        )
+        return cls(path)
 
     @classmethod
     def make_numbered_dir(

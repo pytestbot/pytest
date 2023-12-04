@@ -645,7 +645,7 @@ By using ``legacy`` you will keep using the legacy/xunit1 format when upgrading 
 pytest 6.0, where the default format will be ``xunit2``.
 
 In order to let users know about the transition, pytest will issue a warning in case
-the ``--junitxml`` option is given in the command line but ``junit_family`` is not explicitly
+the ``--junit-xml`` option is given in the command line but ``junit_family`` is not explicitly
 configured in ``pytest.ini``.
 
 Services known to support the ``xunit2`` format:

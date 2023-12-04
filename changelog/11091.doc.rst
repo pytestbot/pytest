@@ -1,0 +1,1 @@
+Updated documentation and tests to refer to hyphonated options: replaced ``--junitxml`` with ``--junit-xml`` and ``--collectonly`` with ``--collect-only``.

@@ -697,6 +697,14 @@ class ExceptionInfo(Generic[E]):
         )
         return fmt.repr_excinfo(self)
 
+    def _stringify_exception(self, exc: BaseException) -> str:
+        return "\n".join(
+            [
+                str(exc),
+                *getattr(exc, "__notes__", []),
+            ]
+        )
+
     def match(self, regexp: Union[str, Pattern[str]]) -> "Literal[True]":
         """Check whether the regular expression `regexp` matches the string
         representation of the exception using :func:`python:re.search`.
@@ -704,18 +712,76 @@ class ExceptionInfo(Generic[E]):
         If it matches `True` is returned, otherwise an `AssertionError` is raised.
         """
         __tracebackhide__ = True
-        value = "\n".join(
-            [
-                str(self.value),
-                *getattr(self.value, "__notes__", []),
-            ]
-        )
+        value = self._stringify_exception(self.value)
         msg = f"Regex pattern did not match.\n Regex: {regexp!r}\n Input: {value!r}"
         if regexp == value:
             msg += "\n Did you mean to `re.escape()` the regex?"
         assert re.search(regexp, value), msg
         # Return True to allow for "assert excinfo.match()".
         return True
+
+    def _group_contains(
+        self,
+        exc_group: BaseExceptionGroup[BaseException],
+        expected_exception: Union[Type[BaseException], Tuple[Type[BaseException], ...]],
+        match: Union[str, Pattern[str], None],
+        target_depth: Optional[int] = None,
+        current_depth: int = 1,
+    ) -> bool:
+        """Return `True` if a `BaseExceptionGroup` contains a matching exception."""
+        if (target_depth is not None) and (current_depth > target_depth):
+            # already descended past the target depth
+            return False
+        for exc in exc_group.exceptions:
+            if isinstance(exc, BaseExceptionGroup):
+                if self._group_contains(
+                    exc, expected_exception, match, target_depth, current_depth + 1
+                ):
+                    return True
+            if (target_depth is not None) and (current_depth != target_depth):
+                # not at the target depth, no match
+                continue
+            if not isinstance(exc, expected_exception):
+                continue
+            if match is not None:
+                value = self._stringify_exception(exc)
+                if not re.search(match, value):
+                    continue
+            return True
+        return False
+
+    def group_contains(
+        self,
+        expected_exception: Union[Type[BaseException], Tuple[Type[BaseException], ...]],
+        *,
+        match: Union[str, Pattern[str], None] = None,
+        depth: Optional[int] = None,
+    ) -> bool:
+        """Check whether a captured exception group contains a matching exception.
+
+        :param Type[BaseException] | Tuple[Type[BaseException]] expected_exception:
+            The expected exception type, or a tuple if one of multiple possible
+            exception types are expected.
+
+        :param str | Pattern[str] | None match:
+            If specified, a string containing a regular expression,
+            or a regular expression object, that is tested against the string
+            representation of the exception and its `PEP-678 <https://peps.python.org/pep-0678/>` `__notes__`
+            using :func:`re.search`.
+
+            To match a literal string that may contain :ref:`special characters
+            <re-syntax>`, the pattern can first be escaped with :func:`re.escape`.
+
+        :param Optional[int] depth:
+            If `None`, will search for a matching exception at any nesting depth.
+            If >= 1, will only match an exception if it's at the specified depth (depth = 1 being
+            the exceptions contained within the topmost exception group).
+        """
+        msg = "Captured exception is not an instance of `BaseExceptionGroup`"
+        assert isinstance(self.value, BaseExceptionGroup), msg
+        msg = "`depth` must be >= 1 if specified"
+        assert (depth is None) or (depth >= 1), msg
+        return self._group_contains(self.value, expected_exception, match, depth)
 
 
 @dataclasses.dataclass

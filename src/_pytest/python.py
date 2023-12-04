@@ -1010,8 +1010,18 @@ class IdMaker:
             # Suffix non-unique IDs to make them unique.
             for index, id in enumerate(resolved_ids):
                 if id_counts[id] > 1:
-                    resolved_ids[index] = f"{id}{id_suffixes[id]}"
+                    suffix = ""
+                    if id and id[-1].isdigit():
+                        suffix = "_"
+                    new_id = f"{id}{suffix}{id_suffixes[id]}"
+                    while new_id in set(resolved_ids):
+                        id_suffixes[id] += 1
+                        new_id = f"{id}{suffix}{id_suffixes[id]}"
+                    resolved_ids[index] = new_id
                     id_suffixes[id] += 1
+        assert len(resolved_ids) == len(
+            set(resolved_ids)
+        ), f"Internal error: {resolved_ids=}"
         return resolved_ids
 
     def _resolve_ids(self) -> Iterable[str]:

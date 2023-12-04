@@ -303,13 +303,13 @@ def pytest_addoption(parser: Parser) -> None:
     add_option_ini(
         "--log-file-format",
         dest="log_file_format",
-        default=DEFAULT_LOG_FORMAT,
+        default=None,
         help="Log format used by the logging module",
     )
     add_option_ini(
         "--log-file-date-format",
         dest="log_file_date_format",
-        default=DEFAULT_LOG_DATE_FORMAT,
+        default=None,
         help="Log date format used by the logging module",
     )
     add_option_ini(
@@ -564,6 +564,22 @@ class LogCaptureFixture:
             self.handler.setLevel(handler_orig_level)
             logging.disable(original_disable_level)
 
+    @contextmanager
+    def filtering(self, filter_: logging.Filter) -> Generator[None, None, None]:
+        """Context manager that temporarily adds the given filter to the caplog's
+        :meth:`handler` for the 'with' statement block, and removes that filter at the
+        end of the block.
+
+        :param filter_: A custom :class:`logging.Filter` object.
+
+        .. versionadded:: 7.5
+        """
+        self.handler.addFilter(filter_)
+        try:
+            yield
+        finally:
+            self.handler.removeFilter(filter_)
+
 
 @fixture
 def caplog(request: FixtureRequest) -> Generator[LogCaptureFixture, None, None]:
@@ -635,7 +651,9 @@ class LoggingPlugin:
         self.report_handler.setFormatter(self.formatter)
 
         # File logging.
-        self.log_file_level = get_log_level_for_setting(config, "log_file_level")
+        self.log_file_level = get_log_level_for_setting(
+            config, "log_file_level", "log_level"
+        )
         log_file = get_option_ini(config, "log_file") or os.devnull
         if log_file != os.devnull:
             directory = os.path.dirname(os.path.abspath(log_file))

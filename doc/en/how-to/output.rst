@@ -16,6 +16,12 @@ Examples for modifying traceback printing:
     pytest -l               # show local variables (shortcut)
     pytest --no-showlocals  # hide local variables (if addopts enables them)
 
+    pytest --capture=fd  # default, capture at the file descriptor level
+    pytest --capture=sys # capture at the sys level
+    pytest --capture=no  # don't capture
+    pytest -s            # don't capture (shortcut)
+    pytest --capture=tee-sys # capture to logs but also output to sys level streams
+
     pytest --tb=auto    # (default) 'long' tracebacks for the first and last
                          # entry, but 'short' style for the other entries
     pytest --tb=long    # exhaustive, informative traceback formatting
@@ -35,6 +41,16 @@ option you make sure a trace is shown.
 
 Verbosity
 --------------------------------------------------
+
+Examples for modifying printing verbosity:
+
+.. code-block:: bash
+
+    pytest --quiet          # quiet - less verbose - mode
+    pytest -q               # quiet - less verbose - mode (shortcut)
+    pytest -v               # increase verbosity, display individual test names
+    pytest -vv              # more verbose, display more details from the test output
+    pytest -vvv             # not a standard , but may be used for even more detail in certain setups
 
 The ``-v`` flag controls the verbosity of pytest output in various aspects: test session progress, assertion
 details when tests fail, fixtures details with ``--fixtures``, etc.
@@ -270,6 +286,20 @@ situations, for example you are shown even fixtures that start with ``_`` if you
 Using higher verbosity levels (``-vvv``, ``-vvvv``, ...) is supported, but has no effect in pytest itself at the moment,
 however some plugins might make use of higher verbosity.
 
+.. _`pytest.fine_grained_verbosity`:
+
+Fine-grained verbosity
+~~~~~~~~~~~~~~~~~~~~~~
+
+In addition to specifying the application wide verbosity level, it is possible to control specific aspects independently.
+This is done by setting a verbosity level in the configuration file for the specific aspect of the output.
+
+:confval:`verbosity_assertions`: Controls how verbose the assertion output should be when pytest is executed. Running
+``pytest --no-header`` with a value of ``2`` would have the same output as the previous example, but each test inside
+the file is shown by a single character in the output.
+
+(Note: currently this is the only option available, but more might be added in the future).
+
 .. _`pytest.detailed_failed_tests_usage`:
 
 Producing a detailed summary report
@@ -478,7 +508,7 @@ integration servers, use this invocation:
 
 .. code-block:: bash
 
-    pytest --junitxml=path
+    pytest --junit-xml=path
 
 to create an XML file at ``path``.
 

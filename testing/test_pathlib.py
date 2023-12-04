@@ -28,6 +28,7 @@ from _pytest.pathlib import resolve_package_path
 from _pytest.pathlib import safe_exists
 from _pytest.pathlib import symlink_or_skip
 from _pytest.pathlib import visit
+from _pytest.pytester import Pytester
 from _pytest.tmpdir import TempPathFactory
 
 
@@ -235,15 +236,15 @@ class TestImportPath:
         name = "pointsback123"
         p = tmp_path.joinpath(name + ".py")
         p.touch()
-        for ending in (".pyc", ".pyo"):
-            mod = ModuleType(name)
-            pseudopath = tmp_path.joinpath(name + ending)
-            pseudopath.touch()
-            mod.__file__ = str(pseudopath)
-            monkeypatch.setitem(sys.modules, name, mod)
-            newmod = import_path(p, root=tmp_path)
-            assert mod == newmod
-        monkeypatch.undo()
+        with monkeypatch.context() as mp:
+            for ending in (".pyc", ".pyo"):
+                mod = ModuleType(name)
+                pseudopath = tmp_path.joinpath(name + ending)
+                pseudopath.touch()
+                mod.__file__ = str(pseudopath)
+                mp.setitem(sys.modules, name, mod)
+                newmod = import_path(p, root=tmp_path)
+                assert mod == newmod
         mod = ModuleType(name)
         pseudopath = tmp_path.joinpath(name + "123.py")
         pseudopath.touch()
@@ -345,18 +346,18 @@ def test_resolve_package_path(tmp_path: Path) -> None:
     (pkg / "subdir").mkdir()
     (pkg / "subdir/__init__.py").touch()
     assert resolve_package_path(pkg) == pkg
-    assert resolve_package_path(pkg.joinpath("subdir", "__init__.py")) == pkg
+    assert resolve_package_path(pkg / "subdir/__init__.py") == pkg
 
 
 def test_package_unimportable(tmp_path: Path) -> None:
     pkg = tmp_path / "pkg1-1"
     pkg.mkdir()
     pkg.joinpath("__init__.py").touch()
-    subdir = pkg.joinpath("subdir")
+    subdir = pkg / "subdir"
     subdir.mkdir()
-    pkg.joinpath("subdir/__init__.py").touch()
+    (pkg / "subdir/__init__.py").touch()
     assert resolve_package_path(subdir) == subdir
-    xyz = subdir.joinpath("xyz.py")
+    xyz = subdir / "xyz.py"
     xyz.touch()
     assert resolve_package_path(xyz) == subdir
     assert not resolve_package_path(pkg)
@@ -592,6 +593,10 @@ class TestImportLibMode:
         result = module_name_from_path(tmp_path / "src/app/__init__.py", tmp_path)
         assert result == "src.app"
 
+        # Unless __init__.py file is at the root, in which case we cannot have an empty module name.
+        result = module_name_from_path(tmp_path / "__init__.py", tmp_path)
+        assert result == "__init__"
+
     def test_insert_missing_modules(
         self, monkeypatch: MonkeyPatch, tmp_path: Path
     ) -> None:
@@ -662,6 +667,22 @@ class TestImportLibMode:
 
         mod = import_path(init, root=tmp_path, mode=ImportMode.importlib)
         assert len(mod.instance.INSTANCES) == 1
+
+    def test_importlib_root_is_package(self, pytester: Pytester) -> None:
+        """
+        Regression for importing a `__init__`.py file that is at the root
+        (#11417).
+        """
+        pytester.makepyfile(__init__="")
+        pytester.makepyfile(
+            """
+            def test_my_test():
+                assert True
+            """
+        )
+
+        result = pytester.runpytest("--import-mode=importlib")
+        result.stdout.fnmatch_lines("* 1 passed *")
 
 
 def test_safe_exists(tmp_path: Path) -> None:

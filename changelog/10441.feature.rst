@@ -1,0 +1,2 @@
+Added :func:`ExceptionInfo.group_contains() <pytest.ExceptionInfo.group_contains>`, an assertion
+helper that tests if an `ExceptionGroup` contains a matching exception.

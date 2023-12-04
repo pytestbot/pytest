@@ -1,5 +1,4 @@
 import pytest
-from _pytest._io.saferepr import _pformat_dispatch
 from _pytest._io.saferepr import DEFAULT_REPR_MAX_SIZE
 from _pytest._io.saferepr import saferepr
 from _pytest._io.saferepr import saferepr_unlimited
@@ -157,12 +156,6 @@ def test_unicode():
     val = "£€"
     reprval = "'£€'"
     assert saferepr(val) == reprval
-
-
-def test_pformat_dispatch():
-    assert _pformat_dispatch("a") == "'a'"
-    assert _pformat_dispatch("a" * 10, width=5) == "'aaaaaaaaaa'"
-    assert _pformat_dispatch("foo bar", width=5) == "('foo '\n 'bar')"
 
 
 def test_broken_getattribute():

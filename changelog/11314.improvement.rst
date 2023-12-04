@@ -1,0 +1,2 @@
+Logging to a file using the ``--log-file`` option will use ``--log-level``, ``--log-format`` and ``--log-date-format`` as fallback
+if ``--log-file-level``, ``--log-file-format`` and ``--log-file-date-format`` are not provided respectively.

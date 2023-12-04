@@ -626,6 +626,13 @@ class TestMetafunc:
             ).make_unique_parameterset_ids()
             assert result == [expected]
 
+    def test_idmaker_duplicated_empty_str(self) -> None:
+        """Regression test for empty strings parametrized more than once (#11563)."""
+        result = IdMaker(
+            ("a",), [pytest.param(""), pytest.param("")], None, None, None, None, None
+        ).make_unique_parameterset_ids()
+        assert result == ["0", "1"]
+
     def test_parametrize_ids_exception(self, pytester: Pytester) -> None:
         """
         :param pytester: the instance of Pytester class, a temporary
@@ -1518,7 +1525,7 @@ class TestMetafuncFunctional:
                 pass
         """
         )
-        result = pytester.runpytest("--collectonly")
+        result = pytester.runpytest("--collect-only")
         result.stdout.fnmatch_lines(
             [
                 "collected 0 items / 1 error",

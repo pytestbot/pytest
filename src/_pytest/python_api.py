@@ -804,11 +804,13 @@ def raises(  # noqa: F811
 def raises(  # noqa: F811
     expected_exception: Union[Type[E], Tuple[Type[E], ...]], *args: Any, **kwargs: Any
 ) -> Union["RaisesContext[E]", _pytest._code.ExceptionInfo[E]]:
-    r"""Assert that a code block/function call raises an exception.
+    r"""Assert that a code block/function call raises an exception type, or one of its subclasses.
 
     :param typing.Type[E] | typing.Tuple[typing.Type[E], ...] expected_exception:
         The expected exception type, or a tuple if one of multiple possible
-        exception types are expected.
+        exception types are expected. Note that subclasses of the passed exceptions
+        will also match.
+
     :kwparam str | typing.Pattern[str] | None match:
         If specified, a string containing a regular expression,
         or a regular expression object, that is tested against the string
@@ -826,13 +828,13 @@ def raises(  # noqa: F811
     .. currentmodule:: _pytest._code
 
     Use ``pytest.raises`` as a context manager, which will capture the exception of the given
-    type::
+    type, or any of its subclasses::
 
         >>> import pytest
         >>> with pytest.raises(ZeroDivisionError):
         ...    1/0
 
-    If the code block does not raise the expected exception (``ZeroDivisionError`` in the example
+    If the code block does not raise the expected exception (:class:`ZeroDivisionError` in the example
     above), or no exception at all, the check will fail instead.
 
     You can also use the keyword argument ``match`` to assert that the
@@ -845,7 +847,7 @@ def raises(  # noqa: F811
         ...     raise ValueError("value must be 42")
 
     The ``match`` argument searches the formatted exception string, which includes any
-    `PEP-678 <https://peps.python.org/pep-0678/>` ``__notes__``:
+    `PEP-678 <https://peps.python.org/pep-0678/>`__ ``__notes__``:
 
         >>> with pytest.raises(ValueError, match=r'had a note added'):  # doctest: +SKIP
         ...    e = ValueError("value must be 42")
@@ -860,6 +862,20 @@ def raises(  # noqa: F811
         >>> assert exc_info.type is ValueError
         >>> assert exc_info.value.args[0] == "value must be 42"
 
+    .. warning::
+
+       Given that ``pytest.raises`` matches subclasses, be wary of using it to match :class:`Exception` like this::
+
+           with pytest.raises(Exception):  # Careful, this will catch ANY exception raised.
+                some_function()
+
+       Because :class:`Exception` is the base class of almost all exceptions, it is easy for this to hide
+       real bugs, where the user wrote this expecting a specific exception, but some other exception is being
+       raised due to a bug introduced during a refactoring.
+
+       Avoid using ``pytest.raises`` to catch :class:`Exception` unless certain that you really want to catch
+       **any** exception raised.
+
     .. note::
 
        When using ``pytest.raises`` as a context manager, it's worthwhile to
@@ -872,7 +888,7 @@ def raises(  # noqa: F811
            >>> with pytest.raises(ValueError) as exc_info:
            ...     if value > 10:
            ...         raise ValueError("value must be <= 10")
-           ...     assert exc_info.type is ValueError  # this will not execute
+           ...     assert exc_info.type is ValueError  # This will not execute.
 
        Instead, the following approach must be taken (note the difference in
        scope)::
@@ -890,6 +906,10 @@ def raises(  # noqa: F811
     some runs raise an exception and others do not.
 
     See :ref:`parametrizing_conditional_raising` for an example.
+
+    .. seealso::
+
+        :ref:`assertraises` for more examples and detailed discussion.
 
     **Legacy form**
 

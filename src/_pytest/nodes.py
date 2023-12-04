@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+import pluggy
+
 import _pytest._code
 from _pytest._code import getfslineno
 from _pytest._code.code import ExceptionInfo
@@ -27,6 +29,7 @@ from _pytest._code.code import Traceback
 from _pytest.compat import LEGACY_PATH
 from _pytest.config import Config
 from _pytest.config import ConftestImportFailure
+from _pytest.config.compat import _check_path
 from _pytest.deprecated import FSCOLLECTOR_GETHOOKPROXY_ISINITPATH
 from _pytest.deprecated import NODE_CTOR_FSPATH_ARG
 from _pytest.mark.structures import Mark
@@ -94,14 +97,6 @@ def iterparentnodeids(nodeid: str) -> Iterator[str]:
         yield nodeid
 
 
-def _check_path(path: Path, fspath: LEGACY_PATH) -> None:
-    if Path(fspath) != path:
-        raise ValueError(
-            f"Path({fspath!r}) != {path!r}\n"
-            "if both path and fspath are given they need to be equal"
-        )
-
-
 def _imply_path(
     node_type: Type["Node"],
     path: Optional[Path],
@@ -127,6 +122,20 @@ _NodeType = TypeVar("_NodeType", bound="Node")
 
 
 class NodeMeta(type):
+    """Metaclass used by :class:`Node` to enforce that direct construction raises
+    :class:`Failed`.
+
+    This behaviour supports the indirection introduced with :meth:`Node.from_parent`,
+    the named constructor to be used instead of direct construction. The design
+    decision to enforce indirection with :class:`NodeMeta` was made as a
+    temporary aid for refactoring the collection tree, which was diagnosed to
+    have :class:`Node` objects whose creational patterns were overly entangled.
+    Once the refactoring is complete, this metaclass can be removed.
+
+    See https://github.com/pytest-dev/pytest/projects/3 for an overview of the
+    progress on detangling the :class:`Node` classes.
+    """
+
     def __call__(self, *k, **kw):
         msg = (
             "Direct construction of {name} has been deprecated, please use {name}.from_parent.\n"
@@ -264,7 +273,7 @@ class Node(metaclass=NodeMeta):
         return cls._create(parent=parent, **kw)
 
     @property
-    def ihook(self):
+    def ihook(self) -> pluggy.HookRelay:
         """fspath-sensitive hook proxy used to call pytest hooks."""
         return self.session.gethookproxy(self.path)
 

@@ -1,0 +1,1 @@
+:func:`pytest.deprecated_call` now also considers warnings of type :class:`FutureWarning`.

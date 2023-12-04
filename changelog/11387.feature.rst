@@ -1,0 +1,5 @@
+Added the new :confval:`verbosity_assertions` configuration option for fine-grained control of failed assertions verbosity.
+
+See :ref:`Fine-grained verbosity <pytest.fine_grained_verbosity>` for more details.
+
+For plugin authors, :attr:`config.get_verbosity <pytest.Config.get_verbosity>` can be used to retrieve the verbosity level for a specific verbosity type.

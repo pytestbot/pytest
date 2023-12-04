@@ -77,14 +77,14 @@ def test_root_logger_affected(pytester: Pytester) -> None:
     assert "warning text going to logger" not in stdout
     assert "info text going to logger" not in stdout
 
-    # The log file should contain the warning and the error log messages and
-    # not the info one, because the default level of the root logger is
-    # WARNING.
+    # The log file should only contain the error log messages and
+    # not the warning or info ones, because the root logger is set to
+    # ERROR using --log-level=ERROR.
     assert os.path.isfile(log_file)
     with open(log_file, encoding="utf-8") as rfh:
         contents = rfh.read()
         assert "info text going to logger" not in contents
-        assert "warning text going to logger" in contents
+        assert "warning text going to logger" not in contents
         assert "error text going to logger" in contents
 
 
@@ -1331,3 +1331,62 @@ def test_date_format_percentf_tz_log(pytester: Pytester) -> None:
     result.stdout.re_match_lines(
         [r"^[0-9-]{10} [0-9:]{8}.[0-9]{6}[+-][0-9\.]+; WARNING; text"]
     )
+
+
+def test_log_file_cli_fallback_options(pytester: Pytester) -> None:
+    """Make sure that fallback values for log-file formats and level works."""
+    pytester.makepyfile(
+        """
+        import logging
+        logger = logging.getLogger()
+
+        def test_foo():
+            logger.info('info text going to logger')
+            logger.warning('warning text going to logger')
+            logger.error('error text going to logger')
+
+            assert 0
+    """
+    )
+    log_file = str(pytester.path.joinpath("pytest.log"))
+    result = pytester.runpytest(
+        "--log-level=ERROR",
+        "--log-format=%(asctime)s %(message)s",
+        "--log-date-format=%H:%M",
+        "--log-file=pytest.log",
+    )
+    assert result.ret == 1
+
+    # The log file should only contain the error log messages
+    # not the warning or info ones and the format and date format
+    # should match the formats provided using --log-format and --log-date-format
+    assert os.path.isfile(log_file)
+    with open(log_file, encoding="utf-8") as rfh:
+        contents = rfh.read()
+        assert re.match(r"[0-9]{2}:[0-9]{2} error text going to logger\s*", contents)
+        assert "info text going to logger" not in contents
+        assert "warning text going to logger" not in contents
+        assert "error text going to logger" in contents
+
+    # Try with a different format and date format to make sure that the formats
+    # are being used
+    result = pytester.runpytest(
+        "--log-level=ERROR",
+        "--log-format=%(asctime)s : %(message)s",
+        "--log-date-format=%H:%M:%S",
+        "--log-file=pytest.log",
+    )
+    assert result.ret == 1
+
+    # The log file should only contain the error log messages
+    # not the warning or info ones and the format and date format
+    # should match the formats provided using --log-format and --log-date-format
+    assert os.path.isfile(log_file)
+    with open(log_file, encoding="utf-8") as rfh:
+        contents = rfh.read()
+        assert re.match(
+            r"[0-9]{2}:[0-9]{2}:[0-9]{2} : error text going to logger\s*", contents
+        )
+        assert "info text going to logger" not in contents
+        assert "warning text going to logger" not in contents
+        assert "error text going to logger" in contents

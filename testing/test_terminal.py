@@ -1802,7 +1802,7 @@ def test_terminal_no_summary_warnings_header_once(pytester: Pytester) -> None:
 
 @pytest.fixture(scope="session")
 def tr() -> TerminalReporter:
-    config = _pytest.config._prepareconfig()
+    config = _pytest.config._prepareconfig([])
     return TerminalReporter(config)
 
 

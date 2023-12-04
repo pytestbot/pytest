@@ -22,6 +22,26 @@ if sys.gettrace():
             sys.settrace(orig_trace)
 
 
+@pytest.fixture(autouse=True)
+def set_column_width(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Force terminal width to 80: some tests check the formatting of --help, which is sensible
+    to terminal width.
+    """
+    monkeypatch.setenv("COLUMNS", "80")
+
+
+@pytest.fixture(autouse=True)
+def reset_colors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Reset all color-related variables to prevent them from affecting internal pytest output
+    in tests that depend on it.
+    """
+    monkeypatch.delenv("PY_COLORS", raising=False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+
+
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_collection_modifyitems(items) -> Generator[None, None, None]:
     """Prefer faster tests.
@@ -151,6 +171,9 @@ def color_mapping():
             "red": "\x1b[31m",
             "green": "\x1b[32m",
             "yellow": "\x1b[33m",
+            "light-gray": "\x1b[90m",
+            "light-red": "\x1b[91m",
+            "light-green": "\x1b[92m",
             "bold": "\x1b[1m",
             "reset": "\x1b[0m",
             "kw": "\x1b[94m",
@@ -162,6 +185,7 @@ def color_mapping():
             "endline": "\x1b[90m\x1b[39;49;00m",
         }
         RE_COLORS = {k: re.escape(v) for k, v in COLORS.items()}
+        NO_COLORS = {k: "" for k in COLORS.keys()}
 
         @classmethod
         def format(cls, lines: List[str]) -> List[str]:
@@ -177,6 +201,11 @@ def color_mapping():
         def format_for_rematch(cls, lines: List[str]) -> List[str]:
             """Replace color names for use with LineMatcher.re_match_lines"""
             return [line.format(**cls.RE_COLORS) for line in lines]
+
+        @classmethod
+        def strip_colors(cls, lines: List[str]) -> List[str]:
+            """Entirely remove every color code"""
+            return [line.format(**cls.NO_COLORS) for line in lines]
 
     return ColorMapping
 

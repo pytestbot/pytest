@@ -22,6 +22,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import Final
 from typing import final
 from typing import Generator
 from typing import IO
@@ -37,6 +38,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
+import pluggy
 from pluggy import HookimplMarker
 from pluggy import HookimplOpts
 from pluggy import HookspecMarker
@@ -46,6 +48,7 @@ from pluggy import PluginManager
 import _pytest._code
 import _pytest.deprecated
 import _pytest.hookspec
+from .compat import PathAwareHookProxy
 from .exceptions import PrintHelp as PrintHelp
 from .exceptions import UsageError as UsageError
 from .findpaths import determine_setup
@@ -67,7 +70,7 @@ from _pytest.warning_types import warn_explicit_for
 if TYPE_CHECKING:
     from _pytest._code.code import _TracebackStyle
     from _pytest.terminal import TerminalReporter
-    from .argparsing import Argument
+    from .argparsing import Argument, Parser
 
 
 _PluggyPlugin = object
@@ -1005,10 +1008,8 @@ class Config:
         # Deprecated alias. Was never public. Can be removed in a few releases.
         self._store = self.stash
 
-        from .compat import PathAwareHookProxy
-
         self.trace = self.pluginmanager.trace.root.get("config")
-        self.hook = PathAwareHookProxy(self.pluginmanager.hook)
+        self.hook: pluggy.HookRelay = PathAwareHookProxy(self.pluginmanager.hook)  # type: ignore[assignment]
         self._inicache: Dict[str, Any] = {}
         self._override_ini: Sequence[str] = ()
         self._opt2dest: Dict[str, str] = {}
@@ -1495,6 +1496,27 @@ class Config:
     def getini(self, name: str):
         """Return configuration value from an :ref:`ini file <configfiles>`.
 
+        If a configuration value is not defined in an
+        :ref:`ini file <configfiles>`, then the ``default`` value provided while
+        registering the configuration through
+        :func:`parser.addini <pytest.Parser.addini>` will be returned.
+        Please note that you can even provide ``None`` as a valid
+        default value.
+
+        If ``default`` is not provided while registering using
+        :func:`parser.addini <pytest.Parser.addini>`, then a default value
+        based on the ``type`` parameter passed to
+        :func:`parser.addini <pytest.Parser.addini>` will be returned.
+        The default values based on ``type`` are:
+        ``paths``, ``pathlist``, ``args`` and ``linelist`` : empty list ``[]``
+        ``bool`` : ``False``
+        ``string`` : empty string ``""``
+
+        If neither the ``default`` nor the ``type`` parameter is passed
+        while registering the configuration through
+        :func:`parser.addini <pytest.Parser.addini>`, then the configuration
+        is treated as a string and a default empty string '' is returned.
+
         If the specified name hasn't been registered through a prior
         :func:`parser.addini <pytest.Parser.addini>` call (usually from a
         plugin), a ValueError is raised.
@@ -1521,11 +1543,7 @@ class Config:
             try:
                 value = self.inicfg[name]
             except KeyError:
-                if default is not None:
-                    return default
-                if type is None:
-                    return ""
-                return []
+                return default
         else:
             value = override_value
         # Coerce the values based on types.
@@ -1632,6 +1650,78 @@ class Config:
     def getvalueorskip(self, name: str, path=None):
         """Deprecated, use getoption(skip=True) instead."""
         return self.getoption(name, skip=True)
+
+    #: Verbosity type for failed assertions (see :confval:`verbosity_assertions`).
+    VERBOSITY_ASSERTIONS: Final = "assertions"
+    _VERBOSITY_INI_DEFAULT: Final = "auto"
+
+    def get_verbosity(self, verbosity_type: Optional[str] = None) -> int:
+        r"""Retrieve the verbosity level for a fine-grained verbosity type.
+
+        :param verbosity_type: Verbosity type to get level for. If a level is
+            configured for the given type, that value will be returned. If the
+            given type is not a known verbosity type, the global verbosity
+            level will be returned. If the given type is None (default), the
+            global verbosity level will be returned.
+
+        To configure a level for a fine-grained verbosity type, the
+        configuration file should have a setting for the configuration name
+        and a numeric value for the verbosity level. A special value of "auto"
+        can be used to explicitly use the global verbosity level.
+
+        Example:
+
+        .. code-block:: ini
+
+            # content of pytest.ini
+            [pytest]
+            verbosity_assertions = 2
+
+        .. code-block:: console
+
+            pytest -v
+
+        .. code-block:: python
+
+            print(config.get_verbosity())  # 1
+            print(config.get_verbosity(Config.VERBOSITY_ASSERTIONS))  # 2
+        """
+        global_level = self.option.verbose
+        assert isinstance(global_level, int)
+        if verbosity_type is None:
+            return global_level
+
+        ini_name = Config._verbosity_ini_name(verbosity_type)
+        if ini_name not in self._parser._inidict:
+            return global_level
+
+        level = self.getini(ini_name)
+        if level == Config._VERBOSITY_INI_DEFAULT:
+            return global_level
+
+        return int(level)
+
+    @staticmethod
+    def _verbosity_ini_name(verbosity_type: str) -> str:
+        return f"verbosity_{verbosity_type}"
+
+    @staticmethod
+    def _add_verbosity_ini(parser: "Parser", verbosity_type: str, help: str) -> None:
+        """Add a output verbosity configuration option for the given output type.
+
+        :param parser: Parser for command line arguments and ini-file values.
+        :param verbosity_type: Fine-grained verbosity category.
+        :param help: Description of the output this type controls.
+
+        The value should be retrieved via a call to
+        :py:func:`config.get_verbosity(type) <pytest.Config.get_verbosity>`.
+        """
+        parser.addini(
+            Config._verbosity_ini_name(verbosity_type),
+            help=help,
+            type="string",
+            default=Config._VERBOSITY_INI_DEFAULT,
+        )
 
     def _warn_about_missing_assertion(self, mode: str) -> None:
         if not _assertion_supported():

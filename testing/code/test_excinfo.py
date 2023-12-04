@@ -27,6 +27,9 @@ from _pytest.pytester import Pytester
 if TYPE_CHECKING:
     from _pytest._code.code import _TracebackStyle
 
+if sys.version_info[:2] < (3, 11):
+    from exceptiongroup import ExceptionGroup
+
 
 @pytest.fixture
 def limited_recursion_depth():
@@ -444,6 +447,92 @@ def test_match_raises_error(pytester: Pytester) -> None:
     result.stdout.re_match_lines([r".*__tracebackhide__ = True.*", *match])
 
 
+class TestGroupContains:
+    def test_contains_exception_type(self) -> None:
+        exc_group = ExceptionGroup("", [RuntimeError()])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError)
+
+    def test_doesnt_contain_exception_type(self) -> None:
+        exc_group = ExceptionGroup("", [ValueError()])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert not exc_info.group_contains(RuntimeError)
+
+    def test_contains_exception_match(self) -> None:
+        exc_group = ExceptionGroup("", [RuntimeError("exception message")])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError, match=r"^exception message$")
+
+    def test_doesnt_contain_exception_match(self) -> None:
+        exc_group = ExceptionGroup("", [RuntimeError("message that will not match")])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert not exc_info.group_contains(RuntimeError, match=r"^exception message$")
+
+    def test_contains_exception_type_unlimited_depth(self) -> None:
+        exc_group = ExceptionGroup("", [ExceptionGroup("", [RuntimeError()])])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError)
+
+    def test_contains_exception_type_at_depth_1(self) -> None:
+        exc_group = ExceptionGroup("", [RuntimeError()])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError, depth=1)
+
+    def test_doesnt_contain_exception_type_past_depth(self) -> None:
+        exc_group = ExceptionGroup("", [ExceptionGroup("", [RuntimeError()])])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert not exc_info.group_contains(RuntimeError, depth=1)
+
+    def test_contains_exception_type_specific_depth(self) -> None:
+        exc_group = ExceptionGroup("", [ExceptionGroup("", [RuntimeError()])])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError, depth=2)
+
+    def test_contains_exception_match_unlimited_depth(self) -> None:
+        exc_group = ExceptionGroup(
+            "", [ExceptionGroup("", [RuntimeError("exception message")])]
+        )
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(RuntimeError, match=r"^exception message$")
+
+    def test_contains_exception_match_at_depth_1(self) -> None:
+        exc_group = ExceptionGroup("", [RuntimeError("exception message")])
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(
+            RuntimeError, match=r"^exception message$", depth=1
+        )
+
+    def test_doesnt_contain_exception_match_past_depth(self) -> None:
+        exc_group = ExceptionGroup(
+            "", [ExceptionGroup("", [RuntimeError("exception message")])]
+        )
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert not exc_info.group_contains(
+            RuntimeError, match=r"^exception message$", depth=1
+        )
+
+    def test_contains_exception_match_specific_depth(self) -> None:
+        exc_group = ExceptionGroup(
+            "", [ExceptionGroup("", [RuntimeError("exception message")])]
+        )
+        with pytest.raises(ExceptionGroup) as exc_info:
+            raise exc_group
+        assert exc_info.group_contains(
+            RuntimeError, match=r"^exception message$", depth=2
+        )
+
+
 class TestFormattedExcinfo:
     @pytest.fixture
     def importasmod(self, tmp_path: Path, _sys_snapshot):
@@ -765,7 +854,11 @@ raise ValueError()
         reprtb = p.repr_traceback(excinfo)
         assert len(reprtb.reprentries) == 3
 
-    def test_traceback_short_no_source(self, importasmod, monkeypatch) -> None:
+    def test_traceback_short_no_source(
+        self,
+        importasmod,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         mod = importasmod(
             """
             def func1():
@@ -777,14 +870,14 @@ raise ValueError()
         excinfo = pytest.raises(ValueError, mod.entry)
         from _pytest._code.code import Code
 
-        monkeypatch.setattr(Code, "path", "bogus")
-        p = FormattedExcinfo(style="short")
-        reprtb = p.repr_traceback_entry(excinfo.traceback[-2])
-        lines = reprtb.lines
-        last_p = FormattedExcinfo(style="short")
-        last_reprtb = last_p.repr_traceback_entry(excinfo.traceback[-1], excinfo)
-        last_lines = last_reprtb.lines
-        monkeypatch.undo()
+        with monkeypatch.context() as mp:
+            mp.setattr(Code, "path", "bogus")
+            p = FormattedExcinfo(style="short")
+            reprtb = p.repr_traceback_entry(excinfo.traceback[-2])
+            lines = reprtb.lines
+            last_p = FormattedExcinfo(style="short")
+            last_reprtb = last_p.repr_traceback_entry(excinfo.traceback[-1], excinfo)
+            last_lines = last_reprtb.lines
         assert lines[0] == "    func1()"
 
         assert last_lines[0] == '    raise ValueError("hello")'

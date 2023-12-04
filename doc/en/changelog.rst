@@ -28,6 +28,21 @@ with advance notice in the **Deprecations** section of releases.
 
 .. towncrier release notes start
 
+pytest 7.4.3 (2023-10-24)
+=========================
+
+Bug Fixes
+---------
+
+- `#10447 <https://github.com/pytest-dev/pytest/issues/10447>`_: Markers are now considered in the reverse mro order to ensure base  class markers are considered first -- this resolves a regression.
+
+
+- `#11239 <https://github.com/pytest-dev/pytest/issues/11239>`_: Fixed ``:=`` in asserts impacting unrelated test cases.
+
+
+- `#11439 <https://github.com/pytest-dev/pytest/issues/11439>`_: Handled an edge case where :data:`sys.stderr` might already be closed when :ref:`faulthandler` is tearing down.
+
+
 pytest 7.4.2 (2023-09-07)
 =========================
 

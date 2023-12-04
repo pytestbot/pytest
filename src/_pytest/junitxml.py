@@ -369,7 +369,7 @@ def record_testsuite_property(request: FixtureRequest) -> Callable[[str, object]
     __tracebackhide__ = True
 
     def record_func(name: str, value: object) -> None:
-        """No-op function in case --junitxml was not passed in the command-line."""
+        """No-op function in case --junit-xml was not passed in the command-line."""
         __tracebackhide__ = True
         _check_record_param_type("name", name)
 

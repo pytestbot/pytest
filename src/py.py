@@ -8,3 +8,5 @@ import _pytest._py.path as path
 
 sys.modules["py.error"] = error
 sys.modules["py.path"] = path
+
+__all__ = ["error", "path"]
