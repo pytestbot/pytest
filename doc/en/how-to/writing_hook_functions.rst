@@ -117,6 +117,10 @@ Hook function ordering / call example
 For any given hook specification there may be more than one
 implementation and we thus generally view ``hook`` execution as a
 ``1:N`` function call where ``N`` is the number of registered functions.
+
+There are certain limitations about hooks starting with ``pytest_``. For
+more information, consult :ref:`Declaring new hooks <new-hooks>`.
+
 There are ways to influence if a hook implementation comes before or
 after others, i.e.  the position in the ``N``-sized list of functions:
 
@@ -165,6 +169,7 @@ Here is the order of execution:
 It's possible to use ``tryfirst`` and ``trylast`` also on hook wrappers
 in which case it will influence the ordering of hook wrappers among each other.
 
+.. _`new-hooks`:
 
 Declaring new hooks
 ------------------------
