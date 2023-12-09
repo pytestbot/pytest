@@ -162,7 +162,7 @@ A note about fixture cleanup
 ----------------------------
 
 pytest does not do any special processing for :data:`SIGTERM <signal.SIGTERM>` and
-:data:`SIGQUIT <signal.SIGQUIT>` signals (:data:`SIGINT <signal.SIGINT>` is handled naturally
+``SIGQUIT`` signals (:data:`SIGINT <signal.SIGINT>` is handled naturally
 by the Python runtime via :class:`KeyboardInterrupt`), so fixtures that manage external resources which are important
 to be cleared when the Python process is terminated (by those signals) might leak resources.
 

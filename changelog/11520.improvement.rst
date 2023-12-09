@@ -1,1 +1,3 @@
 Improved very verbose diff output to color it as a diff instead of only red.
+
+Improved the error reporting to better separate each section.

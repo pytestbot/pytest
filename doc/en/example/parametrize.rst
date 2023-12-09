@@ -4,8 +4,6 @@
 Parametrizing tests
 =================================================
 
-.. currentmodule:: _pytest.python
-
 ``pytest`` allows to easily parametrize test functions.
 For basic docs, see :ref:`parametrize-basics`.
 
@@ -185,7 +183,7 @@ A quick port of "testscenarios"
 Here is a quick port to run tests configured with :pypi:`testscenarios`,
 an add-on from Robert Collins for the standard unittest framework. We
 only have to work a bit to construct the correct arguments for pytest's
-:py:func:`Metafunc.parametrize`:
+:py:func:`Metafunc.parametrize <pytest.Metafunc.parametrize>`:
 
 .. code-block:: python
 

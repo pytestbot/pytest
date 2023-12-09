@@ -96,8 +96,8 @@ def pytest_addoption(parser: "Parser", pluginmanager: "PytestPluginManager") -> 
         <pytest.Parser.addini>`.
 
     :param pytest.PytestPluginManager pluginmanager:
-        The pytest plugin manager, which can be used to install :py:func:`hookspec`'s
-        or :py:func:`hookimpl`'s and allow one plugin to call another plugin's hooks
+        The pytest plugin manager, which can be used to install :py:func:`~pytest.hookspec`'s
+        or :py:func:`~pytest.hookimpl`'s and allow one plugin to call another plugin's hooks
         to change how command line options are added.
 
     Options can later be accessed through the

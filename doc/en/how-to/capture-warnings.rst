@@ -382,8 +382,6 @@ warnings: a WarningsRecorder instance. To view the recorded warnings, you can
 iterate over this instance, call ``len`` on it to get the number of recorded
 warnings, or index into it to get a particular recorded warning.
 
-.. currentmodule:: _pytest.warnings
-
 Full API: :class:`~_pytest.recwarn.WarningsRecorder`.
 
 .. _`warns use cases`:

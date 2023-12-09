@@ -112,7 +112,7 @@ More details can be found in the :pull:`original PR <3317>`.
 .. note::
 
     in a future major release of pytest we will introduce class based markers,
-    at which point markers will no longer be limited to instances of :py:class:`~_pytest.mark.Mark`.
+    at which point markers will no longer be limited to instances of :py:class:`~pytest.Mark`.
 
 
 cache plugin integrated into the core

@@ -98,7 +98,7 @@ class Parser:
         :param opts:
             Option names, can be short or long options.
         :param attrs:
-            Same attributes as the argparse library's :py:func:`add_argument()
+            Same attributes as the argparse library's :meth:`add_argument()
             <argparse.ArgumentParser.add_argument>` function accepts.
 
         After command line parsing, options are available on the pytest config
@@ -400,7 +400,7 @@ class OptionGroup:
         :param opts:
             Option names, can be short or long options.
         :param attrs:
-            Same attributes as the argparse library's :py:func:`add_argument()
+            Same attributes as the argparse library's :meth:`add_argument()
             <argparse.ArgumentParser.add_argument>` function accepts.
         """
         conflict = set(opts).intersection(

@@ -1271,7 +1271,7 @@ configured in multiple ways.
 Extending the previous example, we can flag the fixture to create two
 ``smtp_connection`` fixture instances which will cause all tests using the fixture
 to run twice.  The fixture function gets access to each parameter
-through the special :py:class:`request <FixtureRequest>` object:
+through the special :py:class:`request <pytest.FixtureRequest>` object:
 
 .. code-block:: python
 

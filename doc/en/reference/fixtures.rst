@@ -11,9 +11,6 @@ Fixtures reference
 .. seealso:: :ref:`about-fixtures`
 .. seealso:: :ref:`how-to-fixtures`
 
-
-.. currentmodule:: _pytest.python
-
 .. _`Dependency injection`: https://en.wikipedia.org/wiki/Dependency_injection
 
 
@@ -76,15 +73,13 @@ Built-in fixtures
         :class:`pathlib.Path` objects.
 
    :fixture:`tmpdir`
-        Provide a :class:`py.path.local` object to a temporary
+        Provide a `py.path.local <https://py.readthedocs.io/en/latest/path.html>`_ object to a temporary
         directory which is unique to each test function;
         replaced by :fixture:`tmp_path`.
 
-        .. _`py.path.local`: https://py.readthedocs.io/en/latest/path.html
-
    :fixture:`tmpdir_factory`
         Make session-scoped temporary directories and return
-        :class:`py.path.local` objects;
+        ``py.path.local`` objects;
         replaced by :fixture:`tmp_path_factory`.
 
 

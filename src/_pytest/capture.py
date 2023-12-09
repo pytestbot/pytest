@@ -588,7 +588,7 @@ if sys.version_info >= (3, 11) or TYPE_CHECKING:
 
     @final
     class CaptureResult(NamedTuple, Generic[AnyStr]):
-        """The result of :method:`CaptureFixture.readouterr`."""
+        """The result of :method:`caplog.readouterr() <pytest.CaptureFixture.readouterr>`."""
 
         out: AnyStr
         err: AnyStr
@@ -598,7 +598,7 @@ else:
     class CaptureResult(
         collections.namedtuple("CaptureResult", ["out", "err"]), Generic[AnyStr]
     ):
-        """The result of :method:`CaptureFixture.readouterr`."""
+        """The result of :method:`caplog.readouterr() <pytest.CaptureFixture.readouterr>`."""
 
         __slots__ = ()
 

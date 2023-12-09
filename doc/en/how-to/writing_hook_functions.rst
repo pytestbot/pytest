@@ -59,10 +59,6 @@ The remaining hook functions will not be called in this case.
 hook wrappers: executing around other hooks
 -------------------------------------------------
 
-.. currentmodule:: _pytest.core
-
-
-
 pytest plugins can implement hook wrappers which wrap the execution
 of other hook implementations.  A hook wrapper is a generator function
 which yields exactly once. When pytest invokes hooks it first executes
@@ -165,6 +161,7 @@ Here is the order of execution:
 It's possible to use ``tryfirst`` and ``trylast`` also on hook wrappers
 in which case it will influence the ordering of hook wrappers among each other.
 
+.. _`declaringhooks`:
 
 Declaring new hooks
 ------------------------
@@ -174,13 +171,11 @@ Declaring new hooks
     This is a quick overview on how to add new hooks and how they work in general, but a more complete
     overview can be found in `the pluggy documentation <https://pluggy.readthedocs.io/en/latest/>`__.
 
-.. currentmodule:: _pytest.hookspec
-
 Plugins and ``conftest.py`` files may declare new hooks that can then be
 implemented by other plugins in order to alter behaviour or interact with
 the new plugin:
 
-.. autofunction:: pytest_addhooks
+.. autofunction:: _pytest.hookspec.pytest_addhooks
     :noindex:
 
 Hooks are usually declared as do-nothing functions that contain only

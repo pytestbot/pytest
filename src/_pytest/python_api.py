@@ -825,8 +825,6 @@ def raises(  # noqa: F811
         When using :py:func:`pytest.raises` as a function, you can use:
         ``pytest.raises(Exc, func, match="passed on").match("my pattern")``.)
 
-    .. currentmodule:: _pytest._code
-
     Use ``pytest.raises`` as a context manager, which will capture the exception of the given
     type, or any of its subclasses::
 

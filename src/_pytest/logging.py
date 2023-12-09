@@ -522,7 +522,7 @@ class LogCaptureFixture:
             The levels of the loggers changed by this function will be
             restored to their initial values at the end of the test.
 
-        Will enable the requested logging level if it was disabled via :meth:`logging.disable`.
+        Will enable the requested logging level if it was disabled via :func:`logging.disable`.
 
         :param level: The level.
         :param logger: The logger to update. If not given, the root logger.
@@ -546,7 +546,7 @@ class LogCaptureFixture:
         the end of the 'with' statement the level is restored to its original
         value.
 
-        Will enable the requested logging level if it was disabled via :meth:`logging.disable`.
+        Will enable the requested logging level if it was disabled via :func:`logging.disable`.
 
         :param level: The level.
         :param logger: The logger to update. If not given, the root logger.

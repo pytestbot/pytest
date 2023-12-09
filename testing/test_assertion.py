@@ -392,6 +392,7 @@ class TestAssert_reprcompare:
     def test_text_diff(self) -> None:
         assert callequal("spam", "eggs") == [
             "'spam' == 'eggs'",
+            "",
             "- eggs",
             "+ spam",
         ]
@@ -399,7 +400,7 @@ class TestAssert_reprcompare:
     def test_text_skipping(self) -> None:
         lines = callequal("a" * 50 + "spam", "a" * 50 + "eggs")
         assert lines is not None
-        assert "Skipping" in lines[1]
+        assert "Skipping" in lines[2]
         for line in lines:
             assert "a" * 50 not in line
 
@@ -423,6 +424,7 @@ class TestAssert_reprcompare:
 
         assert diff == [
             "b'spam' == b'eggs'",
+            "",
             "At index 0 diff: b's' != b'e'",
             "Use -v to get more diff",
         ]
@@ -432,7 +434,9 @@ class TestAssert_reprcompare:
         diff = callequal(b"spam", b"eggs", verbose=1)
         assert diff == [
             "b'spam' == b'eggs'",
+            "",
             "At index 0 diff: b's' != b'e'",
+            "",
             "Full diff:",
             "- b'eggs'",
             "+ b'spam'",
@@ -509,6 +513,7 @@ class TestAssert_reprcompare:
         expl = callequal([1, 2], [10, 2], verbose=-1)
         assert expl == [
             "[1, 2] == [10, 2]",
+            "",
             "At index 0 diff: 1 != 10",
             "Use -v to get more diff",
         ]
@@ -547,7 +552,9 @@ class TestAssert_reprcompare:
         diff = callequal(l1, l2, verbose=True)
         assert diff == [
             "['a', 'b', 'c'] == ['a', 'b', 'c...dddddddddddd']",
+            "",
             "Right contains one more item: '" + long_d + "'",
+            "",
             "Full diff:",
             "  [",
             "      'a',",
@@ -560,7 +567,9 @@ class TestAssert_reprcompare:
         diff = callequal(l2, l1, verbose=True)
         assert diff == [
             "['a', 'b', 'c...dddddddddddd'] == ['a', 'b', 'c']",
+            "",
             "Left contains one more item: '" + long_d + "'",
+            "",
             "Full diff:",
             "  [",
             "      'a',",
@@ -579,7 +588,9 @@ class TestAssert_reprcompare:
         diff = callequal(l1, l2, verbose=True)
         assert diff == [
             "['aaaaaaaaaaa...cccccccccccc'] == ['bbbbbbbbbbb...aaaaaaaaaaaa']",
+            "",
             "At index 0 diff: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' != 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'",
+            "",
             "Full diff:",
             "  [",
             "+     'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',",
@@ -596,8 +607,10 @@ class TestAssert_reprcompare:
         diff = callequal(l1, l2, verbose=True)
         assert diff == [
             "['a', 'aaaaaa...aaaaaaa', ...] == ['should not get wrapped']",
+            "",
             "At index 0 diff: 'a' != 'should not get wrapped'",
             "Left contains 7 more items, first extra item: 'aaaaaaaaaa'",
+            "",
             "Full diff:",
             "  [",
             "-     'should not get wrapped',",
@@ -619,9 +632,11 @@ class TestAssert_reprcompare:
         diff = callequal(d1, d2, verbose=True)
         assert diff == [
             "{'common': 1,...1, 'env2': 2}} == {'common': 1,...: {'env1': 1}}",
+            "",
             "Omitting 1 identical items, use -vv to show",
             "Differing items:",
             "{'env': {'env1': 1, 'env2': 2}} != {'env': {'env1': 1}}",
+            "",
             "Full diff:",
             "  {",
             "      'common': 1,",
@@ -639,9 +654,11 @@ class TestAssert_reprcompare:
         diff = callequal(d1, d2, verbose=True)
         assert diff == [
             "{'env': {'sub... wrapped '}}}} == {'env': {'sub...}}}, 'new': 1}",
+            "",
             "Omitting 1 identical items, use -vv to show",
             "Right contains 1 more item:",
             "{'new': 1}",
+            "",
             "Full diff:",
             "  {",
             "      'env': {",
@@ -665,7 +682,7 @@ class TestAssert_reprcompare:
     def test_dict_omitting(self) -> None:
         lines = callequal({"a": 0, "b": 1}, {"a": 1, "b": 1})
         assert lines is not None
-        assert lines[1].startswith("Omitting 1 identical item")
+        assert lines[2].startswith("Omitting 1 identical item")
         assert "Common items" not in lines
         for line in lines[1:]:
             assert "b" not in line
@@ -674,26 +691,29 @@ class TestAssert_reprcompare:
         """Ensure differing items are visible for verbosity=1 (#1512)."""
         lines = callequal({"a": 0, "b": 1}, {"a": 1, "b": 1}, verbose=1)
         assert lines is not None
-        assert lines[1].startswith("Omitting 1 identical item")
-        assert lines[2].startswith("Differing items")
-        assert lines[3] == "{'a': 0} != {'a': 1}"
+        assert lines[1] == ""
+        assert lines[2].startswith("Omitting 1 identical item")
+        assert lines[3].startswith("Differing items")
+        assert lines[4] == "{'a': 0} != {'a': 1}"
         assert "Common items" not in lines
 
     def test_dict_omitting_with_verbosity_2(self) -> None:
         lines = callequal({"a": 0, "b": 1}, {"a": 1, "b": 1}, verbose=2)
         assert lines is not None
-        assert lines[1].startswith("Common items:")
-        assert "Omitting" not in lines[1]
-        assert lines[2] == "{'b': 1}"
+        assert lines[2].startswith("Common items:")
+        assert "Omitting" not in lines[2]
+        assert lines[3] == "{'b': 1}"
 
     def test_dict_different_items(self) -> None:
         lines = callequal({"a": 0}, {"b": 1, "c": 2}, verbose=2)
         assert lines == [
             "{'a': 0} == {'b': 1, 'c': 2}",
+            "",
             "Left contains 1 more item:",
             "{'a': 0}",
             "Right contains 2 more items:",
             "{'b': 1, 'c': 2}",
+            "",
             "Full diff:",
             "  {",
             "-     'b': 1,",
@@ -706,10 +726,12 @@ class TestAssert_reprcompare:
         lines = callequal({"b": 1, "c": 2}, {"a": 0}, verbose=2)
         assert lines == [
             "{'b': 1, 'c': 2} == {'a': 0}",
+            "",
             "Left contains 2 more items:",
             "{'b': 1, 'c': 2}",
             "Right contains 1 more item:",
             "{'a': 0}",
+            "",
             "Full diff:",
             "  {",
             "-     'a': 0,",
@@ -724,8 +746,10 @@ class TestAssert_reprcompare:
         lines = callequal((1, 2), (3, 4, 5), verbose=2)
         assert lines == [
             "(1, 2) == (3, 4, 5)",
+            "",
             "At index 0 diff: 1 != 3",
             "Right contains one more item: 5",
+            "",
             "Full diff:",
             "  (",
             "-     3,",
@@ -742,8 +766,10 @@ class TestAssert_reprcompare:
         lines = callequal((1, 2, 3), (4,), verbose=2)
         assert lines == [
             "(1, 2, 3) == (4,)",
+            "",
             "At index 0 diff: 1 != 4",
             "Left contains 2 more items, first extra item: 2",
+            "",
             "Full diff:",
             "  (",
             "-     4,",
@@ -757,7 +783,9 @@ class TestAssert_reprcompare:
         lines = callequal((1, 2, 3), (1, 20, 3), verbose=2)
         assert lines == [
             "(1, 2, 3) == (1, 20, 3)",
+            "",
             "At index 1 diff: 2 != 20",
+            "",
             "Full diff:",
             "  (",
             "      1,",
@@ -823,7 +851,7 @@ class TestAssert_reprcompare:
         assert expl is not None
         assert expl[0].startswith("{} == <[ValueError")
         assert "raised in repr" in expl[0]
-        assert expl[1:] == [
+        assert expl[2:] == [
             "(pytest_assertion plugin: representation of details failed:"
             " {}:{}: ValueError: 42.".format(
                 __file__, A.__repr__.__code__.co_firstlineno + 1
@@ -849,6 +877,7 @@ class TestAssert_reprcompare:
     def test_unicode(self) -> None:
         assert callequal("£€", "£") == [
             "'£€' == '£'",
+            "",
             "- £",
             "+ £€",
         ]
@@ -864,7 +893,7 @@ class TestAssert_reprcompare:
                 return "\xff"
 
         expl = callequal(A(), "1")
-        assert expl == ["ÿ == '1'", "- 1"]
+        assert expl == ["ÿ == '1'", "", "- 1"]
 
     def test_format_nonascii_explanation(self) -> None:
         assert util.format_explanation("λ")
@@ -887,6 +916,7 @@ class TestAssert_reprcompare:
         expl = callequal(left, right)
         assert expl == [
             r"'hyv\xe4' == 'hyva\u0308'",
+            "",
             f"- {str(right)}",
             f"+ {str(left)}",
         ]
@@ -894,6 +924,7 @@ class TestAssert_reprcompare:
         expl = callequal(left, right, verbose=2)
         assert expl == [
             r"'hyv\xe4' == 'hyva\u0308'",
+            "",
             f"- {str(right)}",
             f"+ {str(left)}",
         ]
@@ -1182,6 +1213,7 @@ class TestAssert_reprcompare_namedtuple:
         # Because the types are different, uses the generic sequence matcher.
         assert lines == [
             "NT1(a=1, b='b') == NT2(a=2, b='b')",
+            "",
             "At index 0 diff: 1 != 2",
             "Use -v to get more diff",
         ]
@@ -1369,7 +1401,7 @@ class TestTruncateExplanation:
 
         line_count = 7
         line_len = 100
-        expected_truncated_lines = 1
+        expected_truncated_lines = 2
         pytester.makepyfile(
             r"""
             def test_many_lines():
@@ -1389,8 +1421,7 @@ class TestTruncateExplanation:
             [
                 "*+ 1*",
                 "*+ 3*",
-                "*+ 5*",
-                "*truncated (%d line hidden)*use*-vv*" % expected_truncated_lines,
+                "*truncated (%d lines hidden)*use*-vv*" % expected_truncated_lines,
             ]
         )
 
@@ -1433,6 +1464,7 @@ def test_rewritten(pytester: Pytester) -> None:
 def test_reprcompare_notin() -> None:
     assert callop("not in", "foo", "aaafoobbb") == [
         "'foo' not in 'aaafoobbb'",
+        "",
         "'foo' is contained here:",
         "  aaafoobbb",
         "?    +++",
@@ -1442,6 +1474,7 @@ def test_reprcompare_notin() -> None:
 def test_reprcompare_whitespaces() -> None:
     assert callequal("\r\n", "\n") == [
         r"'\r\n' == '\n'",
+        "",
         r"Strings contain only whitespace, escaping them using repr()",
         r"- '\n'",
         r"+ '\r\n'",

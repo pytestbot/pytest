@@ -413,7 +413,7 @@ Improvements
 
 
 - `#8508 <https://github.com/pytest-dev/pytest/issues/8508>`_: Introduce multiline display for warning matching  via :py:func:`pytest.warns` and
-  enhance match comparison for :py:func:`_pytest._code.ExceptionInfo.match` as returned by :py:func:`pytest.raises`.
+  enhance match comparison for :py:func:`pytest.ExceptionInfo.match` as returned by :py:func:`pytest.raises`.
 
 
 - `#8646 <https://github.com/pytest-dev/pytest/issues/8646>`_: Improve :py:func:`pytest.raises`. Previously passing an empty tuple would give a confusing
@@ -422,7 +422,7 @@ Improvements
 
 - `#9741 <https://github.com/pytest-dev/pytest/issues/9741>`_: On Python 3.11, use the standard library's :mod:`tomllib` to parse TOML.
 
-  :mod:`tomli` is no longer a dependency on Python 3.11.
+  `tomli` is no longer a dependency on Python 3.11.
 
 
 - `#9742 <https://github.com/pytest-dev/pytest/issues/9742>`_: Display assertion message without escaped newline characters with ``-vv``.
@@ -457,7 +457,7 @@ Bug Fixes
 
   When inheriting marks from super-classes, marks from the sub-classes are now ordered before marks from the super-classes, in MRO order. Previously it was the reverse.
 
-  When inheriting marks from super-classes, the `pytestmark` attribute of the sub-class now only contains the marks directly applied to it. Previously, it also contained marks from its super-classes. Please note that this attribute should not normally be accessed directly; use :func:`pytest.Node.iter_markers` instead.
+  When inheriting marks from super-classes, the `pytestmark` attribute of the sub-class now only contains the marks directly applied to it. Previously, it also contained marks from its super-classes. Please note that this attribute should not normally be accessed directly; use :func:`Node.iter_markers <_pytest.nodes.Node.iter_markers>` instead.
 
 
 - `#9159 <https://github.com/pytest-dev/pytest/issues/9159>`_: Showing inner exceptions by forcing native display in ``ExceptionGroups`` even when using display options other than ``--tb=native``. A temporary step before full implementation of pytest-native display for inner exceptions in ``ExceptionGroups``.
@@ -710,7 +710,7 @@ Bug Fixes
 - `#9355 <https://github.com/pytest-dev/pytest/issues/9355>`_: Fixed error message prints function decorators when using assert in Python 3.8 and above.
 
 
-- `#9396 <https://github.com/pytest-dev/pytest/issues/9396>`_: Ensure :attr:`pytest.Config.inifile` is available during the :func:`pytest_cmdline_main <_pytest.hookspec.pytest_cmdline_main>` hook (regression during ``7.0.0rc1``).
+- `#9396 <https://github.com/pytest-dev/pytest/issues/9396>`_: Ensure `pytest.Config.inifile` is available during the :hook:`pytest_cmdline_main` hook (regression during ``7.0.0rc1``).
 
 
 
@@ -855,7 +855,7 @@ Deprecations
   - ``parser.addoption(..., type="int/string/float/complex")`` - use ``type=int`` etc. instead.
 
 
-- `#8447 <https://github.com/pytest-dev/pytest/issues/8447>`_: Defining a custom pytest node type which is both an :class:`pytest.Item <Item>` and a :class:`pytest.Collector <Collector>` (e.g. :class:`pytest.File <File>`) now issues a warning.
+- `#8447 <https://github.com/pytest-dev/pytest/issues/8447>`_: Defining a custom pytest node type which is both an :class:`~pytest.Item` and a :class:`~pytest.Collector` (e.g. :class:`~pytest.File`) now issues a warning.
   It was never sanely supported and triggers hard to debug errors.
 
   See :ref:`the deprecation note <diamond-inheritance-deprecated>` for full details.
@@ -897,7 +897,7 @@ Features
 - `#7132 <https://github.com/pytest-dev/pytest/issues/7132>`_: Added two environment variables :envvar:`PYTEST_THEME` and :envvar:`PYTEST_THEME_MODE` to let the users customize the pygments theme used.
 
 
-- `#7259 <https://github.com/pytest-dev/pytest/issues/7259>`_: Added :meth:`cache.mkdir() <pytest.Cache.mkdir>`, which is similar to the existing :meth:`cache.makedir() <pytest.Cache.makedir>`,
+- `#7259 <https://github.com/pytest-dev/pytest/issues/7259>`_: Added :meth:`cache.mkdir() <pytest.Cache.mkdir>`, which is similar to the existing ``cache.makedir()``,
   but returns a :class:`pathlib.Path` instead of a legacy ``py.path.local``.
 
   Added a ``paths`` type to :meth:`parser.addini() <pytest.Parser.addini>`,
@@ -923,7 +923,7 @@ Features
   - ``pytest.HookRecorder`` for the :class:`HookRecorder <pytest.HookRecorder>` type returned from :class:`~pytest.Pytester`.
   - ``pytest.RecordedHookCall`` for the :class:`RecordedHookCall <pytest.HookRecorder>` type returned from :class:`~pytest.HookRecorder`.
   - ``pytest.RunResult`` for the :class:`RunResult <pytest.RunResult>` type returned from :class:`~pytest.Pytester`.
-  - ``pytest.LineMatcher`` for the :class:`LineMatcher <pytest.RunResult>` type used in :class:`~pytest.RunResult` and others.
+  - ``pytest.LineMatcher`` for the :class:`LineMatcher <pytest.LineMatcher>` type used in :class:`~pytest.RunResult` and others.
   - ``pytest.TestReport`` for the :class:`TestReport <pytest.TestReport>` type used in various hooks.
   - ``pytest.CollectReport`` for the :class:`CollectReport <pytest.CollectReport>` type used in various hooks.
 
@@ -956,7 +956,7 @@ Features
 
 
 - `#8251 <https://github.com/pytest-dev/pytest/issues/8251>`_: Implement ``Node.path`` as a ``pathlib.Path``. Both the old ``fspath`` and this new attribute gets set no matter whether ``path`` or ``fspath`` (deprecated) is passed to the constructor. It is a replacement for the ``fspath`` attribute (which represents the same path as ``py.path.local``). While ``fspath`` is not deprecated yet
-  due to the ongoing migration of methods like :meth:`~_pytest.Item.reportinfo`, we expect to deprecate it in a future release.
+  due to the ongoing migration of methods like :meth:`~pytest.Item.reportinfo`, we expect to deprecate it in a future release.
 
   .. note::
       The name of the :class:`~_pytest.nodes.Node` arguments and attributes (the
@@ -988,7 +988,7 @@ Features
   See :ref:`plugin-stash` for details.
 
 
-- `#8953 <https://github.com/pytest-dev/pytest/issues/8953>`_: :class:`RunResult <_pytest.pytester.RunResult>` method :meth:`assert_outcomes <_pytest.pytester.RunResult.assert_outcomes>` now accepts a
+- `#8953 <https://github.com/pytest-dev/pytest/issues/8953>`_: :class:`~pytest.RunResult` method :meth:`~pytest.RunResult.assert_outcomes` now accepts a
   ``warnings`` argument to assert the total number of warnings captured.
 
 
@@ -1000,7 +1000,7 @@ Features
   used.
 
 
-- `#9113 <https://github.com/pytest-dev/pytest/issues/9113>`_: :class:`RunResult <_pytest.pytester.RunResult>` method :meth:`assert_outcomes <_pytest.pytester.RunResult.assert_outcomes>` now accepts a
+- `#9113 <https://github.com/pytest-dev/pytest/issues/9113>`_: :class:`~pytest.RunResult` method :meth:`~pytest.RunResult.assert_outcomes` now accepts a
   ``deselected`` argument to assert the total number of deselected tests.
 
 
@@ -1013,7 +1013,7 @@ Improvements
 
 - `#7480 <https://github.com/pytest-dev/pytest/issues/7480>`_: A deprecation scheduled to be removed in a major version X (e.g. pytest 7, 8, 9, ...) now uses warning category `PytestRemovedInXWarning`,
   a subclass of :class:`~pytest.PytestDeprecationWarning`,
-  instead of :class:`PytestDeprecationWarning` directly.
+  instead of :class:`~pytest.PytestDeprecationWarning` directly.
 
   See :ref:`backwards-compatibility` for more details.
 
@@ -1052,7 +1052,7 @@ Improvements
 
 - `#8803 <https://github.com/pytest-dev/pytest/issues/8803>`_: It is now possible to add colors to custom log levels on cli log.
 
-  By using :func:`add_color_level <_pytest.logging.add_color_level>` from a ``pytest_configure`` hook, colors can be added::
+  By using ``add_color_level`` from a :hook:`pytest_configure` hook, colors can be added::
 
       logging_plugin = config.pluginmanager.get_plugin('logging-plugin')
       logging_plugin.log_cli_handler.formatter.add_color_level(logging.INFO, 'cyan')
@@ -1117,7 +1117,7 @@ Bug Fixes
 
 - `#8503 <https://github.com/pytest-dev/pytest/issues/8503>`_: :meth:`pytest.MonkeyPatch.syspath_prepend` no longer fails when
   ``setuptools`` is not installed.
-  It now only calls :func:`pkg_resources.fixup_namespace_packages` if
+  It now only calls ``pkg_resources.fixup_namespace_packages`` if
   ``pkg_resources`` was previously imported, because it is not needed otherwise.
 
 
@@ -1344,7 +1344,7 @@ Features
 
   This is part of the movement to use :class:`pathlib.Path` objects internally, in order to remove the dependency to ``py`` in the future.
 
-  Internally, the old :class:`Testdir <_pytest.pytester.Testdir>` is now a thin wrapper around :class:`Pytester <_pytest.pytester.Pytester>`, preserving the old interface.
+  Internally, the old :class:`~pytest.Testdir` is now a thin wrapper around :class:`~pytest.Pytester`, preserving the old interface.
 
 
 - :issue:`7695`: A new hook was added, `pytest_markeval_namespace` which should return a dictionary.
@@ -1382,7 +1382,7 @@ Features
 Improvements
 ------------
 
-- :issue:`1265`: Added an ``__str__`` implementation to the :class:`~pytest.pytester.LineMatcher` class which is returned from ``pytester.run_pytest().stdout`` and similar. It returns the entire output, like the existing ``str()`` method.
+- :issue:`1265`: Added an ``__str__`` implementation to the :class:`~pytest.LineMatcher` class which is returned from ``pytester.run_pytest().stdout`` and similar. It returns the entire output, like the existing ``str()`` method.
 
 
 - :issue:`2044`: Verbose mode now shows the reason that a test was skipped in the test's terminal line after the "SKIPPED", "XFAIL" or "XPASS".
@@ -1446,7 +1446,7 @@ Bug Fixes
 - :issue:`7911`: Directories created by by :fixture:`tmp_path` and :fixture:`tmpdir` are now considered stale after 3 days without modification (previous value was 3 hours) to avoid deleting directories still in use in long running test suites.
 
 
-- :issue:`7913`: Fixed a crash or hang in :meth:`pytester.spawn <_pytest.pytester.Pytester.spawn>` when the :mod:`readline` module is involved.
+- :issue:`7913`: Fixed a crash or hang in :meth:`pytester.spawn <pytest.Pytester.spawn>` when the :mod:`readline` module is involved.
 
 
 - :issue:`7951`: Fixed handling of recursive symlinks when collecting tests.
@@ -1563,7 +1563,7 @@ Deprecations
   if you use this and want a replacement.
 
 
-- :issue:`7255`: The :hook:`pytest_warning_captured` hook is deprecated in favor
+- :issue:`7255`: The ``pytest_warning_captured`` hook is deprecated in favor
   of :hook:`pytest_warning_recorded`, and will be removed in a future version.
 
 
@@ -1591,8 +1591,8 @@ Improvements
 - :issue:`7572`: When a plugin listed in ``required_plugins`` is missing or an unknown config key is used with ``--strict-config``, a simple error message is now shown instead of a stacktrace.
 
 
-- :issue:`7685`: Added two new attributes :attr:`rootpath <_pytest.config.Config.rootpath>` and :attr:`inipath <_pytest.config.Config.inipath>` to :class:`Config <_pytest.config.Config>`.
-  These attributes are :class:`pathlib.Path` versions of the existing :attr:`rootdir <_pytest.config.Config.rootdir>` and :attr:`inifile <_pytest.config.Config.inifile>` attributes,
+- :issue:`7685`: Added two new attributes :attr:`rootpath <pytest.Config.rootpath>` and :attr:`inipath <pytest.Config.inipath>` to :class:`~pytest.Config`.
+  These attributes are :class:`pathlib.Path` versions of the existing :attr:`rootdir <pytest.Config.rootdir>` and :attr:`inifile <pytest.Config.inifile>` attributes,
   and should be preferred over them when possible.
 
 
@@ -1663,7 +1663,7 @@ Trivial/Internal Changes
 - :issue:`7587`: The dependency on the ``more-itertools`` package has been removed.
 
 
-- :issue:`7631`: The result type of :meth:`capfd.readouterr() <_pytest.capture.CaptureFixture.readouterr>` (and similar) is no longer a namedtuple,
+- :issue:`7631`: The result type of :meth:`capfd.readouterr() <pytest.CaptureFixture.readouterr>` (and similar) is no longer a namedtuple,
   but should behave like one in all respects. This was done for technical reasons.
 
 
@@ -2041,10 +2041,10 @@ Improvements
 - :issue:`7128`: `pytest --version` now displays just the pytest version, while `pytest --version --version` displays more verbose information including plugins. This is more consistent with how other tools show `--version`.
 
 
-- :issue:`7133`: :meth:`caplog.set_level() <_pytest.logging.LogCaptureFixture.set_level>` will now override any :confval:`log_level` set via the CLI or configuration file.
+- :issue:`7133`: :meth:`caplog.set_level() <pytest.LogCaptureFixture.set_level>` will now override any :confval:`log_level` set via the CLI or configuration file.
 
 
-- :issue:`7159`: :meth:`caplog.set_level() <_pytest.logging.LogCaptureFixture.set_level>` and :meth:`caplog.at_level() <_pytest.logging.LogCaptureFixture.at_level>` no longer affect
+- :issue:`7159`: :meth:`caplog.set_level() <pytest.LogCaptureFixture.set_level>` and :meth:`caplog.at_level() <pytest.LogCaptureFixture.at_level>` no longer affect
   the level of logs that are shown in the *Captured log report* report section.
 
 
@@ -2390,7 +2390,7 @@ Improvements
 - :issue:`6384`: Make `--showlocals` work also with `--tb=short`.
 
 
-- :issue:`6653`: Add support for matching lines consecutively with :attr:`LineMatcher <_pytest.pytester.LineMatcher>`'s :func:`~_pytest.pytester.LineMatcher.fnmatch_lines` and :func:`~_pytest.pytester.LineMatcher.re_match_lines`.
+- :issue:`6653`: Add support for matching lines consecutively with :class:`~pytest.LineMatcher`'s :func:`~pytest.LineMatcher.fnmatch_lines` and :func:`~pytest.LineMatcher.re_match_lines`.
 
 
 - :issue:`6658`: Code is now highlighted in tracebacks when ``pygments`` is installed.
@@ -2458,7 +2458,7 @@ Bug Fixes
 - :issue:`6597`: Fix node ids which contain a parametrized empty-string variable.
 
 
-- :issue:`6646`: Assertion rewriting hooks are (re)stored for the current item, which fixes them being still used after e.g. pytester's :func:`testdir.runpytest <_pytest.pytester.Testdir.runpytest>` etc.
+- :issue:`6646`: Assertion rewriting hooks are (re)stored for the current item, which fixes them being still used after e.g. pytester's :func:`testdir.runpytest <pytest.Testdir.runpytest>` etc.
 
 
 - :issue:`6660`: :py:func:`pytest.exit` is handled when emitted from the :hook:`pytest_sessionfinish` hook.  This includes quitting from a debugger.
@@ -2524,7 +2524,7 @@ Bug Fixes
   ``multiprocessing`` module.
 
 
-- :issue:`6436`: :class:`FixtureDef <_pytest.fixtures.FixtureDef>` objects now properly register their finalizers with autouse and
+- :issue:`6436`: :class:`~pytest.FixtureDef` objects now properly register their finalizers with autouse and
   parameterized fixtures that execute before them in the fixture stack so they are torn
   down at the right times, and in the right order.
 
@@ -2580,7 +2580,7 @@ Improvements
 Bug Fixes
 ---------
 
-- :issue:`5914`: pytester: fix :py:func:`~_pytest.pytester.LineMatcher.no_fnmatch_line` when used after positive matching.
+- :issue:`5914`: pytester: fix :py:func:`~pytest.LineMatcher.no_fnmatch_line` when used after positive matching.
 
 
 - :issue:`6082`: Fix line detection for doctest samples inside :py:class:`python:property` docstrings, as a workaround to :bpo:`17446`.
@@ -2644,8 +2644,8 @@ Features
   rather than implicitly.
 
 
-- :issue:`5914`: :fixture:`testdir` learned two new functions, :py:func:`~_pytest.pytester.LineMatcher.no_fnmatch_line` and
-  :py:func:`~_pytest.pytester.LineMatcher.no_re_match_line`.
+- :issue:`5914`: :fixture:`testdir` learned two new functions, :py:func:`~pytest.LineMatcher.no_fnmatch_line` and
+  :py:func:`~pytest.LineMatcher.no_re_match_line`.
 
   The functions are used to ensure the captured text *does not* match the given
   pattern.
@@ -6497,7 +6497,7 @@ Changes
 * fix :issue:`2013`: turn RecordedWarning into ``namedtuple``,
   to give it a comprehensible repr while preventing unwarranted modification.
 
-* fix :issue:`2208`: ensure an iteration limit for _pytest.compat.get_real_func.
+* fix :issue:`2208`: ensure an iteration limit for ``_pytest.compat.get_real_func``.
   Thanks :user:`RonnyPfannschmidt` for the report and PR.
 
 * Hooks are now verified after collection is complete, rather than right after loading installed plugins. This

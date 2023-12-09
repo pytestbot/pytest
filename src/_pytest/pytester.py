@@ -1044,7 +1044,7 @@ class Pytester:
         The calling test instance (class containing the test method) must
         provide a ``.getrunner()`` method which should return a runner which
         can run the test protocol for a single item, e.g.
-        :py:func:`_pytest.runner.runtestprotocol`.
+        ``_pytest.runner.runtestprotocol``.
         """
         # used from runner functional tests
         item = self.getitem(source)
@@ -1395,7 +1395,7 @@ class Pytester:
         :param stdin:
             Optional standard input.
 
-            - If it is :py:attr:`CLOSE_STDIN` (Default), then this method calls
+            - If it is ``CLOSE_STDIN`` (Default), then this method calls
               :py:class:`subprocess.Popen` with ``stdin=subprocess.PIPE``, and
               the standard input is closed immediately after the new command is
               started.

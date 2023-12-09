@@ -11,8 +11,6 @@ funcarg mechanism, see :ref:`historical funcargs and pytest.funcargs`.
 If you are new to pytest, then you can simply ignore this
 section and read the other sections.
 
-.. currentmodule:: _pytest
-
 Shortcomings of the previous ``pytest_funcarg__`` mechanism
 --------------------------------------------------------------
 

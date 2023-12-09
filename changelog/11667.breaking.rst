@@ -1,0 +1,3 @@
+pytest's ``setup.py`` file is removed.
+If you relied on this file, e.g. to install pytest using ``setup.py install``,
+please see `Why you shouldn't invoke setup.py directly <https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html#summary>`_ for alternatives.

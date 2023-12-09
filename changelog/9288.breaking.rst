@@ -1,4 +1,4 @@
-:func:`pytest.warns <warns>` now re-emits unmatched warnings when the context
+:func:`~pytest.warns` now re-emits unmatched warnings when the context
 closes -- previously it would consume all warnings, hiding those that were not
 matched by the function.
 
