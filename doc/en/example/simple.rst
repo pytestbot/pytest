@@ -168,7 +168,7 @@ Now we'll get feedback on a bad argument:
 
 
 If you need to provide more detailed error messages, you can use the
-``type`` parameter and raise ``pytest.UsageError``:
+``type`` parameter and raise :exc:`pytest.UsageError`:
 
 .. code-block:: python
 

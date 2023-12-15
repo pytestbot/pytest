@@ -99,7 +99,8 @@ class TestCollector:
             conftest="""
             import pytest
             class CustomFile(pytest.File):
-                pass
+                def collect(self):
+                    return []
             def pytest_collect_file(file_path, parent):
                 if file_path.suffix == ".xxx":
                     return CustomFile.from_parent(path=file_path, parent=parent)
@@ -1508,6 +1509,9 @@ def test_fscollector_from_parent(pytester: Pytester, request: FixtureRequest) ->
         def __init__(self, *k, x, **kw):
             super().__init__(*k, **kw)
             self.x = x
+
+        def collect(self):
+            raise NotImplementedError()
 
     collector = MyCollector.from_parent(
         parent=request.session, path=pytester.path / "foo", x=10

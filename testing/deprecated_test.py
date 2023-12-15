@@ -257,11 +257,17 @@ def test_deprecation_of_cmdline_preparse(pytester: Pytester) -> None:
 def test_node_ctor_fspath_argument_is_deprecated(pytester: Pytester) -> None:
     mod = pytester.getmodulecol("")
 
+    class MyFile(pytest.File):
+        def collect(self):
+            raise NotImplementedError()
+
     with pytest.warns(
         pytest.PytestDeprecationWarning,
-        match=re.escape("The (fspath: py.path.local) argument to File is deprecated."),
+        match=re.escape(
+            "The (fspath: py.path.local) argument to MyFile is deprecated."
+        ),
     ):
-        pytest.File.from_parent(
+        MyFile.from_parent(
             parent=mod.parent,
             fspath=legacy_path("bla"),
         )

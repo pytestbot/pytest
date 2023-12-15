@@ -73,6 +73,12 @@ def test_subclassing_both_item_and_collector_deprecated(
                 """Legacy ctor with legacy call # don't wana see"""
                 super().__init__(fspath, parent)
 
+            def collect(self):
+                raise NotImplementedError()
+
+            def runtest(self):
+                raise NotImplementedError()
+
     with pytest.warns(PytestWarning) as rec:
         SoWrong.from_parent(
             request.session, fspath=legacy_path(tmp_path / "broken.txt")

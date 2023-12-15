@@ -93,7 +93,7 @@ Fixture availability is determined from the perspective of the test. A fixture
 is only available for tests to request if they are in the scope that fixture is
 defined in. If a fixture is defined inside a class, it can only be requested by
 tests inside that class. But if a fixture is defined inside the global scope of
-the module, than every test in that module, even if it's defined inside a class,
+the module, then every test in that module, even if it's defined inside a class,
 can request it.
 
 Similarly, a test can also only be affected by an autouse fixture if that test

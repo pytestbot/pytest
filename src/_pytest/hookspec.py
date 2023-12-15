@@ -55,7 +55,7 @@ hookspec = HookspecMarker("pytest")
 @hookspec(historic=True)
 def pytest_addhooks(pluginmanager: "PytestPluginManager") -> None:
     """Called at plugin registration time to allow adding new hooks via a call to
-    ``pluginmanager.add_hookspecs(module_or_class, prefix)``.
+    :func:`pluginmanager.add_hookspecs(module_or_class, prefix) <pytest.PytestPluginManager.add_hookspecs>`.
 
     :param pytest.PytestPluginManager pluginmanager: The pytest plugin manager.
 
@@ -858,8 +858,8 @@ def pytest_warning_recorded(
     """Process a warning captured by the internal pytest warnings plugin.
 
     :param warning_message:
-        The captured warning. This is the same object produced by :py:func:`warnings.catch_warnings`, and contains
-        the same attributes as the parameters of :py:func:`warnings.showwarning`.
+        The captured warning. This is the same object produced by :class:`warnings.catch_warnings`,
+        and contains the same attributes as the parameters of :py:func:`warnings.showwarning`.
 
     :param when:
         Indicates when the warning was captured. Possible values:
@@ -940,10 +940,10 @@ def pytest_exception_interact(
     interactively handled.
 
     May be called during collection (see :hook:`pytest_make_collect_report`),
-    in which case ``report`` is a :class:`CollectReport`.
+    in which case ``report`` is a :class:`~pytest.CollectReport`.
 
     May be called during runtest of an item (see :hook:`pytest_runtest_protocol`),
-    in which case ``report`` is a :class:`TestReport`.
+    in which case ``report`` is a :class:`~pytest.TestReport`.
 
     This hook is not called if the exception that was raised is an internal
     exception like ``skip.Exception``.

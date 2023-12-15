@@ -1,4 +1,6 @@
+import abc
 import os
+import pathlib
 import warnings
 from functools import cached_property
 from inspect import signature
@@ -121,7 +123,7 @@ def _imply_path(
 _NodeType = TypeVar("_NodeType", bound="Node")
 
 
-class NodeMeta(type):
+class NodeMeta(abc.ABCMeta):
     """Metaclass used by :class:`Node` to enforce that direct construction raises
     :class:`Failed`.
 
@@ -165,7 +167,7 @@ class NodeMeta(type):
             return super().__call__(*k, **known_kw)
 
 
-class Node(metaclass=NodeMeta):
+class Node(abc.ABC, metaclass=NodeMeta):
     r"""Base class of :class:`Collector` and :class:`Item`, the components of
     the test collection tree.
 
@@ -176,8 +178,8 @@ class Node(metaclass=NodeMeta):
     # Implemented in the legacypath plugin.
     #: A ``LEGACY_PATH`` copy of the :attr:`path` attribute. Intended for usage
     #: for methods not migrated to ``pathlib.Path`` yet, such as
-    #: :meth:`Item.reportinfo`. Will be deprecated in a future release, prefer
-    #: using :attr:`path` instead.
+    #: :meth:`Item.reportinfo <pytest.Item.reportinfo>`. Will be deprecated in
+    #: a future release, prefer using :attr:`path` instead.
     fspath: LEGACY_PATH
 
     # Use __slots__ to make attribute access faster.
@@ -228,7 +230,7 @@ class Node(metaclass=NodeMeta):
         if path is None and fspath is None:
             path = getattr(parent, "path", None)
         #: Filesystem path where this node was collected from (can be None).
-        self.path: Path = _imply_path(type(self), path, fspath=fspath)
+        self.path: pathlib.Path = _imply_path(type(self), path, fspath=fspath)
 
         # The explicit annotation is to avoid publicly exposing NodeKeywords.
         #: Keywords/markers collected from all scopes.
@@ -534,7 +536,7 @@ def get_fslocation_from_item(node: "Node") -> Tuple[Union[str, Path], Optional[i
     return getattr(node, "fspath", "unknown location"), -1
 
 
-class Collector(Node):
+class Collector(Node, abc.ABC):
     """Base class of all collectors.
 
     Collector create children through `collect()` and thus iteratively build
@@ -544,6 +546,7 @@ class Collector(Node):
     class CollectError(Exception):
         """An error during collection, contains a custom message."""
 
+    @abc.abstractmethod
     def collect(self) -> Iterable[Union["Item", "Collector"]]:
         """Collect children (items and collectors) for this collector."""
         raise NotImplementedError("abstract")
@@ -588,7 +591,7 @@ def _check_initialpaths_for_relpath(session: "Session", path: Path) -> Optional[
     return None
 
 
-class FSCollector(Collector):
+class FSCollector(Collector, abc.ABC):
     """Base class for filesystem collectors."""
 
     def __init__(
@@ -666,14 +669,14 @@ class FSCollector(Collector):
         return self.session.isinitpath(path)
 
 
-class File(FSCollector):
+class File(FSCollector, abc.ABC):
     """Base class for collecting tests from a file.
 
     :ref:`non-python tests`.
     """
 
 
-class Item(Node):
+class Item(Node, abc.ABC):
     """Base class of all test invocation items.
 
     Note that for a single function there might be multiple test invocation items.
@@ -739,6 +742,7 @@ class Item(Node):
                 PytestWarning,
             )
 
+    @abc.abstractmethod
     def runtest(self) -> None:
         """Run the test case for this item.
 

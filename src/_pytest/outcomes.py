@@ -112,7 +112,7 @@ def exit(
         only because `msg` is deprecated.
 
     :param returncode:
-        Return code to be used when exiting pytest.
+        Return code to be used when exiting pytest. None means the same as ``0`` (no error), same as :func:`sys.exit`.
 
     :param msg:
         Same as ``reason``, but deprecated. Will be removed in a future version, use ``reason`` instead.

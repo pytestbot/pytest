@@ -79,7 +79,7 @@ pytest.xfail
 pytest.exit
 ~~~~~~~~~~~
 
-.. autofunction:: pytest.exit(reason, [returncode=False, msg=None])
+.. autofunction:: pytest.exit(reason, [returncode=None, msg=None])
 
 pytest.main
 ~~~~~~~~~~~
@@ -821,6 +821,7 @@ Node
 
 .. autoclass:: _pytest.nodes.Node()
     :members:
+    :show-inheritance:
 
 Collector
 ~~~~~~~~~
@@ -1157,7 +1158,10 @@ When set (regardless of value), pytest will use color in terminal output.
 Exceptions
 ----------
 
-.. autoclass:: pytest.UsageError()
+.. autoexception:: pytest.UsageError()
+    :show-inheritance:
+
+.. autoexception:: pytest.FixtureLookupError()
     :show-inheritance:
 
 .. _`warnings ref`:

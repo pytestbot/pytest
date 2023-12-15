@@ -135,7 +135,9 @@ def get_scope_node(
     import _pytest.python
 
     if scope is Scope.Function:
-        return node.getparent(nodes.Item)
+        # Type ignored because this is actually safe, see:
+        # https://github.com/python/mypy/issues/4717
+        return node.getparent(nodes.Item)  # type: ignore[type-abstract]
     elif scope is Scope.Class:
         return node.getparent(_pytest.python.Class)
     elif scope is Scope.Module:

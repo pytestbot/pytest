@@ -449,6 +449,7 @@ class PytestPluginManager(PluginManager):
     def parse_hookimpl_opts(
         self, plugin: _PluggyPlugin, name: str
     ) -> Optional[HookimplOpts]:
+        """:meta private:"""
         # pytest hooks are always prefixed with "pytest_",
         # so we avoid accessing possibly non-readable attributes
         # (see issue #1073).
@@ -472,6 +473,7 @@ class PytestPluginManager(PluginManager):
         )
 
     def parse_hookspec_opts(self, module_or_class, name: str) -> Optional[HookspecOpts]:
+        """:meta private:"""
         opts = super().parse_hookspec_opts(module_or_class, name)
         if opts is None:
             method = getattr(module_or_class, name)

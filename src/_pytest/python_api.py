@@ -30,15 +30,6 @@ if TYPE_CHECKING:
     from numpy import ndarray
 
 
-def _non_numeric_type_error(value, at: Optional[str]) -> TypeError:
-    at_str = f" at {at}" if at else ""
-    return TypeError(
-        "cannot make approximate comparisons to non-numeric values: {!r} {}".format(
-            value, at_str
-        )
-    )
-
-
 def _compare_approx(
     full_object: object,
     message_data: Sequence[Tuple[str, str, str]],
@@ -806,23 +797,23 @@ def raises(  # noqa: F811
 ) -> Union["RaisesContext[E]", _pytest._code.ExceptionInfo[E]]:
     r"""Assert that a code block/function call raises an exception type, or one of its subclasses.
 
-    :param typing.Type[E] | typing.Tuple[typing.Type[E], ...] expected_exception:
+    :param expected_exception:
         The expected exception type, or a tuple if one of multiple possible
         exception types are expected. Note that subclasses of the passed exceptions
         will also match.
 
-    :kwparam str | typing.Pattern[str] | None match:
+    :kwparam str | re.Pattern[str] | None match:
         If specified, a string containing a regular expression,
         or a regular expression object, that is tested against the string
-        representation of the exception and its `PEP-678 <https://peps.python.org/pep-0678/>` `__notes__`
+        representation of the exception and its :pep:`678` `__notes__`
         using :func:`re.search`.
 
         To match a literal string that may contain :ref:`special characters
         <re-syntax>`, the pattern can first be escaped with :func:`re.escape`.
 
-        (This is only used when :py:func:`pytest.raises` is used as a context manager,
+        (This is only used when ``pytest.raises`` is used as a context manager,
         and passed through to the function otherwise.
-        When using :py:func:`pytest.raises` as a function, you can use:
+        When using ``pytest.raises`` as a function, you can use:
         ``pytest.raises(Exc, func, match="passed on").match("my pattern")``.)
 
     Use ``pytest.raises`` as a context manager, which will capture the exception of the given

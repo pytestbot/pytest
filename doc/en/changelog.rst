@@ -1344,7 +1344,7 @@ Features
 
   This is part of the movement to use :class:`pathlib.Path` objects internally, in order to remove the dependency to ``py`` in the future.
 
-  Internally, the old :class:`~pytest.Testdir` is now a thin wrapper around :class:`~pytest.Pytester`, preserving the old interface.
+  Internally, the old ``pytest.Testdir`` is now a thin wrapper around :class:`~pytest.Pytester`, preserving the old interface.
 
 
 - :issue:`7695`: A new hook was added, `pytest_markeval_namespace` which should return a dictionary.
@@ -1592,7 +1592,7 @@ Improvements
 
 
 - :issue:`7685`: Added two new attributes :attr:`rootpath <pytest.Config.rootpath>` and :attr:`inipath <pytest.Config.inipath>` to :class:`~pytest.Config`.
-  These attributes are :class:`pathlib.Path` versions of the existing :attr:`rootdir <pytest.Config.rootdir>` and :attr:`inifile <pytest.Config.inifile>` attributes,
+  These attributes are :class:`pathlib.Path` versions of the existing ``rootdir`` and ``inifile`` attributes,
   and should be preferred over them when possible.
 
 
@@ -2139,7 +2139,7 @@ Bug Fixes
   parameter when Python is called with the ``-bb`` flag.
 
 
-- :issue:`7143`: Fix :meth:`pytest.File.from_parent` so it forwards extra keyword arguments to the constructor.
+- :issue:`7143`: Fix :meth:`pytest.File.from_parent <_pytest.nodes.Node.from_parent>` so it forwards extra keyword arguments to the constructor.
 
 
 - :issue:`7145`: Classes with broken ``__getattribute__`` methods are displayed correctly during failures.
@@ -2458,7 +2458,7 @@ Bug Fixes
 - :issue:`6597`: Fix node ids which contain a parametrized empty-string variable.
 
 
-- :issue:`6646`: Assertion rewriting hooks are (re)stored for the current item, which fixes them being still used after e.g. pytester's :func:`testdir.runpytest <pytest.Testdir.runpytest>` etc.
+- :issue:`6646`: Assertion rewriting hooks are (re)stored for the current item, which fixes them being still used after e.g. pytester's ``testdir.runpytest`` etc.
 
 
 - :issue:`6660`: :py:func:`pytest.exit` is handled when emitted from the :hook:`pytest_sessionfinish` hook.  This includes quitting from a debugger.

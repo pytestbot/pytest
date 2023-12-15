@@ -1,4 +1,5 @@
 """Python test discovery, setup and run of test functions."""
+import abc
 import dataclasses
 import enum
 import fnmatch
@@ -381,7 +382,7 @@ del _EmptyClass
 # fmt: on
 
 
-class PyCollector(PyobjMixin, nodes.Collector):
+class PyCollector(PyobjMixin, nodes.Collector, abc.ABC):
     def funcnamefilter(self, name: str) -> bool:
         return self._matches_prefix_or_glob_option("python_functions", name)
 

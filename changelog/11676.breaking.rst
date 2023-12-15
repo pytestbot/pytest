@@ -1,0 +1,3 @@
+The classes :class:`~_pytest.nodes.Node`, :class:`~pytest.Collector`, :class:`~pytest.Item`, :class:`~pytest.File`, :class:`~_pytest.nodes.FSCollector` are now marked abstract (see :mod:`abc`).
+
+We do not expect this change to affect users and plugin authors, it will only cause errors when the code is already wrong or problematic.

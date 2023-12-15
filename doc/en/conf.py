@@ -169,6 +169,50 @@ extlinks = {
 }
 
 
+nitpicky = True
+nitpick_ignore = [
+    # TODO (fix in pluggy?)
+    ("py:class", "HookCaller"),
+    ("py:class", "HookspecMarker"),
+    ("py:exc", "PluginValidationError"),
+    # Might want to expose/TODO (https://github.com/pytest-dev/pytest/issues/7469)
+    ("py:class", "ExceptionRepr"),
+    ("py:class", "Exit"),
+    ("py:class", "SubRequest"),
+    ("py:class", "SubRequest"),
+    ("py:class", "TerminalReporter"),
+    ("py:class", "_pytest._code.code.TerminalRepr"),
+    ("py:class", "_pytest.fixtures.FixtureFunctionMarker"),
+    ("py:class", "_pytest.logging.LogCaptureHandler"),
+    ("py:class", "_pytest.mark.structures.ParameterSet"),
+    # Intentionally undocumented/private
+    ("py:class", "_pytest._code.code.Traceback"),
+    ("py:class", "_pytest._py.path.LocalPath"),
+    ("py:class", "_pytest.capture.CaptureResult"),
+    ("py:class", "_pytest.compat.NotSetType"),
+    ("py:class", "_pytest.python.PyCollector"),
+    ("py:class", "_pytest.python.PyobjMixin"),
+    ("py:class", "_pytest.python_api.RaisesContext"),
+    ("py:class", "_pytest.recwarn.WarningsChecker"),
+    ("py:class", "_pytest.reports.BaseReport"),
+    # Undocumented third parties
+    ("py:class", "_tracing.TagTracerSub"),
+    ("py:class", "warnings.WarningMessage"),
+    # Undocumented type aliases
+    ("py:class", "LEGACY_PATH"),
+    ("py:class", "_PluggyPlugin"),
+    # TypeVars
+    ("py:class", "_pytest._code.code.E"),
+    ("py:class", "_pytest.fixtures.FixtureFunction"),
+    ("py:class", "_pytest.nodes._NodeType"),
+    ("py:class", "_pytest.python_api.E"),
+    ("py:class", "_pytest.recwarn.T"),
+    ("py:class", "_pytest.runner.TResult"),
+    ("py:obj", "_pytest.fixtures.FixtureValue"),
+    ("py:obj", "_pytest.stash.T"),
+]
+
+
 # -- Options for HTML output ---------------------------------------------------
 
 sys.path.append(os.path.abspath("_themes"))
