@@ -4571,8 +4571,8 @@ def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
             assert fixture2 in (4, 5)
         """
     )
-    res = pytester.inline_run()
-    res.assertoutcome(passed=2)
+    res = pytester.runpytest()
+    res.assert_outcomes(passed=2)
 
 
 def test_reordering_after_dynamic_parametrize(pytester: Pytester):
@@ -4720,8 +4720,8 @@ def test_dont_recompute_dependency_tree_if_no_direct_dynamic_parametrize(
             assert calls[6].kwargs["parentnode"].nodeid.endswith("test")
         """
     )
-    reprec = pytester.inline_run()
-    reprec.assertoutcome(passed=6)
+    reprec = pytester.runpytest()
+    reprec.assert_outcomes(passed=6)
 
 
 def test_deduplicate_names() -> None:

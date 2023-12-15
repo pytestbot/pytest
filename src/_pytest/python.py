@@ -60,7 +60,6 @@ from _pytest.deprecated import check_ispytest
 from _pytest.deprecated import INSTANCE_COLLECTOR
 from _pytest.deprecated import NOSE_SUPPORT_METHOD
 from _pytest.fixtures import _get_direct_parametrize_args
-from _pytest.fixtures import FixtureDef
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
 from _pytest.fixtures import IdentityFixtureDef
@@ -1189,7 +1188,7 @@ class CallSpec2:
 
 
 # Used for storing pseudo fixturedefs for direct parametrization.
-name2pseudofixturedef_key = StashKey[Dict[str, FixtureDef[Any]]]()
+name2pseudofixturedef_key = StashKey[Dict[str, IdentityFixtureDef[Any]]]()
 
 
 @final
@@ -1379,7 +1378,7 @@ class Metafunc:
         if node is None:
             name2pseudofixturedef = None
         else:
-            default: Dict[str, FixtureDef[Any]] = {}
+            default: Dict[str, IdentityFixtureDef[Any]] = {}
             name2pseudofixturedef = node.stash.setdefault(
                 name2pseudofixturedef_key, default
             )
