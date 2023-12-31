@@ -169,7 +169,12 @@ def skip(
 
 
 @_with_exception(Failed)
-def fail(reason: str = "", pytrace: bool = True, msg: Optional[str] = None) -> NoReturn:
+def fail(
+    reason: str = "",
+    pytrace: bool = True,
+    msg: Optional[str] = None,
+    suppress_context=False,
+) -> NoReturn:
     """Explicitly fail an executing test with the given message.
 
     :param reason:
@@ -181,10 +186,22 @@ def fail(reason: str = "", pytrace: bool = True, msg: Optional[str] = None) -> N
 
     :param msg:
         Same as ``reason``, but deprecated. Will be removed in a future version, use ``reason`` instead.
+
+    :param suppressContext:
+        If true, prevents test from printing the context of internal errors.
     """
-    __tracebackhide__ = True
-    reason = _resolve_msg_to_reason("fail", reason, msg)
-    raise Failed(msg=reason, pytrace=pytrace)
+
+    if suppress_context:
+        try:
+            __tracebackhide__ = True
+            reason = _resolve_msg_to_reason("fail", reason, msg)
+            raise Failed(msg=reason, pytrace=pytrace)
+        except BaseException as e:
+            e.__cause__ = None
+            raise
+    else:
+        reason = _resolve_msg_to_reason("fail", reason, msg)
+        raise Failed(msg=reason, pytrace=pytrace)
 
 
 def _resolve_msg_to_reason(
