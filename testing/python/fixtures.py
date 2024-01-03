@@ -4534,8 +4534,198 @@ def test_yield_fixture_with_no_value(pytester: Pytester) -> None:
     assert result.ret == ExitCode.TESTS_FAILED
 
 
+def test_fixture_info_after_dynamic_parametrize(pytester: Pytester) -> None:
+    """
+    Item dependency tree should get prunned before `FixtureManager::pytest_generate_tests`
+    hook implementation because it attempts to parametrize on the fixtures in the
+    fixture closure.
+    """
+    pytester.makeconftest(
+        """
+        import pytest
+
+        @pytest.fixture(scope='session', params=[0, 1])
+        def fixture1(request):
+            pass
+
+        @pytest.fixture(scope='session')
+        def fixture2(fixture1):
+            pass
+
+        @pytest.fixture(scope='session', params=[2, 3])
+        def fixture3(request, fixture2):
+            pass
+        """
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+        def pytest_generate_tests(metafunc):
+            metafunc.parametrize("fixture2", [4, 5], scope='session')
+
+        @pytest.fixture(scope='session')
+        def fixture2(fixture3):
+            pass
+
+        def test(fixture2):
+            assert fixture2 in (4, 5)
+        """
+    )
+    res = pytester.runpytest()
+    res.assert_outcomes(passed=2)
+
+
+def test_reordering_after_dynamic_parametrize(pytester: Pytester):
+    """Make sure that prunning dependency tree takes place correctly, regarding from
+    reordering's viewpoint."""
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            if metafunc.definition.name == "test_0":
+                metafunc.parametrize("fixture2", [0])
+
+        @pytest.fixture(scope='module', params=[0])
+        def fixture1():
+            pass
+
+        @pytest.fixture(scope='module')
+        def fixture2(fixture1):
+            pass
+
+        def test_0(fixture2):
+            pass
+
+        def test_1():
+            pass
+
+        def test_2(fixture1):
+            pass
+        """
+    )
+    result = pytester.runpytest("--collect-only")
+    result.stdout.fnmatch_lines(
+        [
+            "*test_0*",
+            "*test_1*",
+            "*test_2*",
+        ],
+        consecutive=True,
+    )
+
+
+def test_request_shouldnt_be_in_closure_after_pruning_dep_tree_when_its_not_in_initial_closure(
+    pytester: Pytester,
+):
+    """Make sure that fixture `request` doesn't show up in the closure after prunning dependency
+    tree when it has not been there beforehand.
+    """
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            metafunc.parametrize("arg", [0])
+
+        @pytest.fixture()
+        def fixture():
+            pass
+
+        def test(fixture, arg):
+            pass
+        """
+    )
+    result = pytester.runpytest("--setup-show")
+    result.stdout.re_match_lines(
+        [
+            r".+test\[0\] \(fixtures used: arg, fixture\)\.",
+        ],
+    )
+
+
+def test_dont_recompute_dependency_tree_if_no_direct_dynamic_parametrize(
+    pytester: Pytester,
+):
+    """We should not update item's dependency tree when there's no direct dynamic
+    parametrization, i.e. `metafunc.parametrize(indirect=False)`s in module/class specific
+    `pytest_generate_tests` hooks, for the sake of efficiency.
+    """
+    pytester.makeconftest(
+        """
+        import pytest
+        from _pytest.config import hookimpl
+        from unittest.mock import Mock
+
+        original_method = None
+
+        @hookimpl(trylast=True)
+        def pytest_sessionstart(session):
+            global original_method
+            original_method = session._fixturemanager.getfixtureclosure
+            session._fixturemanager.getfixtureclosure = Mock(wraps=original_method)
+
+        @hookimpl(tryfirst=True)
+        def pytest_sessionfinish(session, exitstatus):
+            global original_method
+            session._fixturemanager.getfixtureclosure = original_method
+        """
+    )
+    pytester.makepyfile(
+        """
+        import pytest
+
+        def pytest_generate_tests(metafunc):
+            if metafunc.definition.name == "test_0":
+                metafunc.parametrize("fixture", [0])
+
+            if metafunc.definition.name == "test_4":
+                metafunc.parametrize("fixture", [0], indirect=True)
+
+
+        @pytest.fixture(scope='module')
+        def fixture():
+            pass
+
+        def test_0(fixture):
+            pass
+
+        def test_1():
+            pass
+
+        @pytest.mark.parametrize("fixture", [0])
+        def test_2(fixture):
+            pass
+
+        @pytest.mark.parametrize("fixture", [0], indirect=True)
+        def test_3(fixture):
+            pass
+
+        def test_4(fixture):
+            pass
+
+        @pytest.fixture
+        def fm(request):
+            yield request._fixturemanager
+
+        def test(fm):
+            calls = fm.getfixtureclosure.call_args_list
+            assert len(calls) == 7
+            assert calls[0].kwargs["parentnode"].nodeid.endswith("test_0")
+            assert calls[1].kwargs["parentnode"].nodeid.endswith("test_0")
+            assert calls[2].kwargs["parentnode"].nodeid.endswith("test_1")
+            assert calls[3].kwargs["parentnode"].nodeid.endswith("test_2")
+            assert calls[4].kwargs["parentnode"].nodeid.endswith("test_3")
+            assert calls[5].kwargs["parentnode"].nodeid.endswith("test_4")
+            assert calls[6].kwargs["parentnode"].nodeid.endswith("test")
+        """
+    )
+    reprec = pytester.runpytest()
+    reprec.assert_outcomes(passed=6)
+
+
 def test_deduplicate_names() -> None:
     items = deduplicate_names("abacd")
     assert items == ("a", "b", "c", "d")
-    items = deduplicate_names(items + ("g", "f", "g", "e", "b"))
+    items = deduplicate_names(items, ("g", "f", "g", "e", "b"))
     assert items == ("a", "b", "c", "d", "g", "f", "e")
