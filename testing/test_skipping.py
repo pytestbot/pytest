@@ -602,13 +602,12 @@ class TestXFail:
         self, expected, actual, matchline, pytester: Pytester
     ) -> None:
         p = pytester.makepyfile(
-            """
+            f"""
             import pytest
-            @pytest.mark.xfail(raises=%s)
+            @pytest.mark.xfail(raises={expected})
             def test_raises():
-                raise %s()
-        """  # noqa: UP031 (python syntax issues)
-            % (expected, actual)
+                raise {actual}()
+        """
         )
         result = pytester.runpytest(p)
         result.stdout.fnmatch_lines([matchline])
@@ -900,13 +899,12 @@ class TestSkipif:
     )
     def test_skipif_reporting(self, pytester: Pytester, params) -> None:
         p = pytester.makepyfile(
-            test_foo="""
+            test_foo=f"""
             import pytest
-            @pytest.mark.skipif(%(params)s)
+            @pytest.mark.skipif({params})
             def test_that():
                 assert 0
-        """  # noqa: UP031 (python syntax issues)
-            % dict(params=params)
+        """
         )
         result = pytester.runpytest(p, "-s", "-rs")
         result.stdout.fnmatch_lines(["*SKIP*1*test_foo.py*platform*", "*1 skipped*"])
