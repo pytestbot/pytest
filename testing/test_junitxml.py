@@ -6,6 +6,7 @@ from datetime import timezone
 import os
 from pathlib import Path
 import platform
+from typing import Any
 from typing import cast
 from typing import TYPE_CHECKING
 from xml.dom import minidom
@@ -21,6 +22,7 @@ from _pytest.pytester import RunResult
 from _pytest.reports import BaseReport
 from _pytest.reports import TestReport
 from _pytest.stash import Stash
+import _pytest.timing
 import pytest
 
 
@@ -62,13 +64,12 @@ def run_and_parse(pytester: Pytester, schema: xmlschema.XMLSchema) -> RunAndPars
     return RunAndParse(pytester, schema)
 
 
-def assert_attr(node, **kwargs):
+def assert_attr(node: minidom.Element, **kwargs: object) -> None:
     __tracebackhide__ = True
 
-    def nodeval(node, name):
+    def nodeval(node: minidom.Element, name: str) -> str | None:
         anode = node.getAttributeNode(name)
-        if anode is not None:
-            return anode.value
+        return anode.value if anode is not None else None
 
     expected = {name: str(value) for name, value in kwargs.items()}
     on_node = {name: nodeval(node, name) for name in expected}
@@ -76,38 +77,35 @@ def assert_attr(node, **kwargs):
 
 
 class DomNode:
-    def __init__(self, dom):
+    def __init__(self, dom: minidom.Element | minidom.Document):
         self.__node = dom
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__node.toxml()
 
-    def find_first_by_tag(self, tag):
+    def find_first_by_tag(self, tag: str) -> DomNode | None:
         return self.find_nth_by_tag(tag, 0)
 
-    def _by_tag(self, tag):
-        return self.__node.getElementsByTagName(tag)
-
     @property
-    def children(self):
+    def children(self) -> list[DomNode]:
         return [type(self)(x) for x in self.__node.childNodes]
 
     @property
-    def get_unique_child(self):
+    def get_unique_child(self) -> DomNode:
         children = self.children
         assert len(children) == 1
         return children[0]
 
-    def find_nth_by_tag(self, tag, n):
-        items = self._by_tag(tag)
+    def find_nth_by_tag(self, tag: str, n: int) -> DomNode | None:
+        items = self.__node.getElementsByTagName(tag)
         try:
             nth = items[n]
         except IndexError:
-            pass
+            return None
         else:
             return type(self)(nth)
 
-    def find_by_tag(self, tag):
+    def find_by_tag(self, tag: str) -> list[DomNode]:
         t = type(self)
         return [t(x) for x in self.__node.getElementsByTagName(tag)]
 
@@ -116,23 +114,25 @@ class DomNode:
         if node is not None:
             return node.value
 
-    def assert_attr(self, **kwargs):
+    def assert_attr(self, **kwargs: object) -> None:
         __tracebackhide__ = True
+        assert isinstance(self.__node, minidom.Element)
         return assert_attr(self.__node, **kwargs)
 
-    def toxml(self):
+    def toxml(self) -> str:
         return self.__node.toxml()
 
     @property
-    def text(self):
-        return self.__node.childNodes[0].wholeText
+    def text(self) -> str:
+        return cast(str, self.__node.childNodes[0].wholeText)
 
     @property
-    def tag(self):
+    def tag(self) -> str:
+        assert isinstance(self.__node, minidom.Element)
         return self.__node.tagName
 
     @property
-    def next_sibling(self):
+    def next_sibling(self) -> DomNode:
         return type(self)(self.__node.nextSibling)
 
 
@@ -226,7 +226,10 @@ class TestPython:
         assert start_time <= timestamp < datetime.now(timezone.utc)
 
     def test_timing_function(
-        self, pytester: Pytester, run_and_parse: RunAndParse, mock_timing
+        self,
+        pytester: Pytester,
+        run_and_parse: RunAndParse,
+        mock_timing: _pytest.timing.MockTiming,
     ) -> None:
         pytester.makepyfile(
             """
@@ -256,7 +259,7 @@ class TestPython:
         # mock LogXML.node_reporter so it always sets a known duration to each test report object
         original_node_reporter = LogXML.node_reporter
 
-        def node_reporter_wrapper(s, report):
+        def node_reporter_wrapper(s: Any, report: TestReport) -> Any:
             report.duration = 1.0
             reporter = original_node_reporter(s, report)
             return reporter
@@ -500,9 +503,9 @@ class TestPython:
     def test_failure_function(
         self,
         pytester: Pytester,
-        junit_logging,
+        junit_logging: str,
         run_and_parse: RunAndParse,
-        xunit_family,
+        xunit_family: str,
     ) -> None:
         pytester.makepyfile(
             """
@@ -600,9 +603,9 @@ class TestPython:
         assert result.ret
         node = dom.find_first_by_tag("testsuite")
         node.assert_attr(failures=3, tests=3)
-
-        for index, char in enumerate("<&'"):
-            tnode = node.find_nth_by_tag("testcase", index)
+        tnodes = node.find_by_tag("testcase")
+        assert len(tnodes) == 3
+        for tnode, char in zip(tnodes, "<&'"):
             tnode.assert_attr(
                 classname="test_failure_escape", name=f"test_func[{char}]"
             )
@@ -945,12 +948,12 @@ def test_dont_configure_on_workers(tmp_path: Path) -> None:
         if TYPE_CHECKING:
             workerinput = None
 
-        def __init__(self):
+        def __init__(self) -> None:
             self.pluginmanager = self
             self.option = self
             self.stash = Stash()
 
-        def getini(self, name):
+        def getini(self, name: object) -> str:
             return "pytest"
 
         junitprefix = None
@@ -1469,7 +1472,7 @@ def test_fancy_items_regression(pytester: Pytester, run_and_parse: RunAndParse) 
     result.stdout.no_fnmatch_line("*INTERNALERROR*")
 
     items = sorted(
-        "%(classname)s %(name)s" % x  # noqa: UP031
+        f"{x['classname']} {x['name']}"
         # dom is a DomNode not a mapping, it's not possible to ** it.
         for x in dom.find_by_tag("testcase")
     )
