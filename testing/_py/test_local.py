@@ -207,10 +207,7 @@ class CommonFSTests:
         assert "sampledir" in lst
         assert path1.sep.join(["sampledir", "otherfile"]) not in lst
 
-    @pytest.mark.parametrize(
-        "fil",
-        ["*dir", "*dir", pytest.mark.skip("sys.version_info < (3,6)")(b"*dir")],
-    )
+    @pytest.mark.parametrize("fil", ["*dir", "*dir", b"*dir"])
     def test_visit_filterfunc_is_string(self, path1, fil):
         lst = []
         for i in path1.visit(fil):
@@ -463,12 +460,10 @@ class CommonFSTests:
 
         assert fspath(path1) == path1.strpath
 
-    @pytest.mark.skip("sys.version_info < (3,6)")
     def test_fspath_open(self, path1):
         f = path1.join("opentestfile")
         open(f)
 
-    @pytest.mark.skip("sys.version_info < (3,6)")
     def test_fspath_fsencode(self, path1):
         from os import fsencode
 
