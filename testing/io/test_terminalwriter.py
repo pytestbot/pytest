@@ -221,7 +221,10 @@ def test_NO_COLOR_and_FORCE_COLOR(
     monkeypatch.setitem(os.environ, "FORCE_COLOR", FORCE_COLOR)
     assert_color(expected)
 
-
+@pytest.mark.skipif(
+    os.environ["TERM"] == "dumb" or "NO_COLOR" in os.environ,
+    reason="dumb terminals can't handle color"
+    )
 def test_empty_NO_COLOR_and_FORCE_COLOR_ignored(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setitem(os.environ, "NO_COLOR", "")
     monkeypatch.setitem(os.environ, "FORCE_COLOR", "")
