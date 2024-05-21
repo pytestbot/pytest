@@ -14,6 +14,7 @@ from typing import Mapping
 from typing import Optional
 from typing import Protocol
 from typing import Sequence
+from typing import Tuple
 from unicodedata import normalize
 
 from _pytest import outcomes
@@ -333,8 +334,17 @@ def _compare_eq_iterable(
     # dynamic import to speedup pytest
     import difflib
 
-    left_formatting = PrettyPrinter().pformat(left).splitlines()
-    right_formatting = PrettyPrinter().pformat(right).splitlines()
+    if _is_empty_vs_non_empty(left, right):
+        left_formatting, right_formatting = _format_for_empty_and_non_empty(left, right)
+        lines_left = len(left_formatting)
+        lines_right = len(right_formatting)
+
+        if lines_left > 1 or lines_right > 1:
+            _surrounding_parens_on_own_lines(left_formatting)
+            _surrounding_parens_on_own_lines(right_formatting)
+    else:
+        left_formatting = PrettyPrinter().pformat(left).splitlines()
+        right_formatting = PrettyPrinter().pformat(right).splitlines()
 
     explanation = ["", "Full diff:"]
     # "right" is the expected base against which we compare "left",
@@ -349,6 +359,43 @@ def _compare_eq_iterable(
         ).splitlines()
     )
     return explanation
+
+
+def _surrounding_parens_on_own_lines(lines: List[str]) -> None:
+    """Move opening/closing parenthesis/bracket to own lines."""
+    opening = lines[0][:1]
+    if opening in ["(", "[", "{"]:
+        lines[0] = " " + lines[0][1:]
+        lines[:] = [opening] + lines
+    closing = lines[-1][-1:]
+    if closing in [")", "]", "}"]:
+        lines[-1] = lines[-1][:-1] + ","
+        lines[:] = lines + [closing]
+
+
+def _is_empty_vs_non_empty(left: Iterable[Any], right: Iterable[Any]) -> bool:
+    is_left_empty = not any(left) if isinstance(left, Iterable) else not left
+    is_right_empty = not any(right) if isinstance(right, Iterable) else not right
+    return (is_left_empty and not is_right_empty) or (
+        not is_left_empty and is_right_empty
+    )
+
+
+def _format_for_empty_and_non_empty(
+    left: Iterable[Any], right: Iterable[Any]
+) -> Tuple[List[str], List[str]]:
+    if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+        if not left:
+            right_width = max(len(s) + 4 for s in right)
+            right_formatting = pprint.pformat(right, width=right_width).splitlines()
+            left_formatting = pprint.pformat(left).splitlines()
+        else:
+            left_width = max(len(s) + 4 for s in left)
+            left_formatting = pprint.pformat(left, width=left_width).splitlines()
+            right_formatting = pprint.pformat(right).splitlines()
+        return left_formatting, right_formatting
+    else:
+        return pprint.pformat(left).splitlines(), pprint.pformat(right).splitlines()
 
 
 def _compare_eq_sequence(

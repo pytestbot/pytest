@@ -396,6 +396,89 @@ class TestAssert_reprcompare:
             "+ spam",
         ]
 
+    def test_multiline_diff(self) -> None:
+        m1 = [
+            "This is some dummy test which shows the strange way in which Pycharm"
+            " displays the full diff."
+        ]
+        m2 = [
+            "This is some dummy test which shows the strange way in which Pycharm"
+            " displays the full diff.This is some dummy test which shows the strange way in which Pycharm"
+            " displays the full diff."
+        ]
+        m3 = [
+            "This is some dummy test which shows the strange way in which Pycharm"
+            " displays the full diff.",
+            "This is some dummy test which shows the strange way in which Pycharm"
+            " displays the full diff.",
+        ]
+
+        assert callequal(m1, []) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains one more item: 'This is some dummy test which shows the "
+            "strange way in which Pycharm displays the full diff.'",
+            "Use -v to get more diff",
+        ]
+        assert callequal(m1, [], verbose=True) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains one more item: 'This is some dummy test which shows the "
+            "strange way in which Pycharm displays the full diff.'",
+            "",
+            "Full diff:",
+            "- []",
+            "+ ['This is some dummy test which shows the strange way in which Pycharm "
+            "displays the full diff.']",
+        ]
+
+        assert callequal(m2, []) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains one more item: 'This is some dummy test which shows the "
+            "strange way in which Pycharm displays the full diff.This is some dummy test "
+            "which shows the strange way in which Pycharm displays the full diff.'",
+            "Use -v to get more diff",
+        ]
+
+        assert callequal(m2, [], verbose=True) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains one more item: 'This is some dummy test which shows the "
+            "strange way in which Pycharm displays the full diff.This is some dummy test "
+            "which shows the strange way in which Pycharm displays the full diff.'",
+            "" "",
+            "Full diff:",
+            "- []",
+            "+ ['This is some dummy test which shows the strange way in which Pycharm "
+            "displays the full diff.This is some dummy test which shows the strange "
+            "way in which Pycharm displays the full diff.']",
+        ]
+
+        assert callequal(m3, []) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains 2 more items, first extra item: 'This is some dummy test which shows the strange way in "
+            "which Pycharm displays the full diff.'",
+            "" "Use -v to get more diff",
+        ]
+
+        assert callequal(m3, [], verbose=True) == [
+            "['This is som...e full diff.'] == []",
+            "",
+            "Left contains 2 more items, first extra item: 'This is some dummy test which shows the strange way in "
+            "which Pycharm displays the full diff.'",
+            "",
+            "Full diff:",
+            "  [",
+            "-  ,",
+            "+  'This is some dummy test which shows the strange way in which Pycharm "
+            "displays the full diff.',",
+            "+  'This is some dummy test which shows the strange way in which Pycharm "
+            "displays the full diff.',",
+            "  ]",
+        ]
+
     def test_text_skipping(self) -> None:
         lines = callequal("a" * 50 + "spam", "a" * 50 + "eggs")
         assert lines is not None

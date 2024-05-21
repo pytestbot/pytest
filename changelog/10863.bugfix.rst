@@ -1,0 +1,4 @@
+Found source causes multiline string diff error
+Added private functions to check specific cases
+Fixed output issue with implicit concatonated strings
+Added tests in test assertion file in function test_multiline_diff
