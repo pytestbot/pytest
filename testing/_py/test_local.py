@@ -207,7 +207,10 @@ class CommonFSTests:
         assert "sampledir" in lst
         assert path1.sep.join(["sampledir", "otherfile"]) not in lst
 
-    @pytest.mark.parametrize("fil", ["*dir", "*dir", b"*dir"])
+    @pytest.mark.parametrize(
+        "fil",
+        ["*dir", "*dir", pytest.mark.skipif("sys.version_info < (3,10)")(b"*dir")],
+    )
     def test_visit_filterfunc_is_string(self, path1, fil):
         lst = []
         for i in path1.visit(fil):
