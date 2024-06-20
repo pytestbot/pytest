@@ -1,0 +1,3 @@
+Fixed file write in `Cache.set()` to be atomic.
+
+Non-atomic write could cause issues when `Cache.set()` called from different pytest-xdist workers for the same key. Now it should be safe to use in combination with pytest-xdist.

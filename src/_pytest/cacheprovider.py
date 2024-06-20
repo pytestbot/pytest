@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 from typing import Dict
 from typing import final
 from typing import Generator
@@ -76,6 +77,10 @@ class Cache:
         self._cachedir = cachedir
         self._config = config
 
+        # Note: there's no way to get the current umask atomically, eek.
+        self._umask = os.umask(0o022)
+        os.umask(self._umask)
+
     @classmethod
     def for_config(cls, config: Config, *, _ispytest: bool = False) -> "Cache":
         """Create the Cache instance for a Config.
@@ -124,6 +129,44 @@ class Cache:
             self._config.hook,
             stacklevel=3,
         )
+
+    def _write_atomic(self, path: Path, content: str) -> None:
+        tmpfile = tempfile.NamedTemporaryFile(
+            delete=False, dir=self._cachedir, mode="w", encoding="UTF-8"
+        )
+
+        with tmpfile:
+            tmpfile.write(content)
+
+        # Reset permissions to the default, see #12308.
+        os.chmod(tmpfile.name, 0o666 - self._umask)
+
+        # On Windows, replace() might fail with ERROR_ACCESS_DENIED (5) if
+        # the target file is open by another process.
+        # Retry with exponential backoff in this case.
+        retry_delay = 1 / (2**10)
+        deadline = time.perf_counter() + 5
+
+        while True:
+            try:
+                os.replace(tmpfile.name, path)
+                # Note: trying to remove tmpfile.name after successful replace()
+                # can cause a race condition, so it can't be done in 'finally:'
+                return
+
+            except OSError as ex:
+                if getattr(ex, "winerror", None) != 5 or time.perf_counter() > deadline:
+                    os.remove(tmpfile.name)
+                    raise
+
+            except BaseException:
+                os.remove(tmpfile.name)
+                raise
+
+            time.sleep(max(0, min(retry_delay, deadline - time.perf_counter())))
+
+            if retry_delay < 0.25:
+                retry_delay *= 2
 
     def _mkdir(self, path: Path) -> None:
         self._ensure_cache_dir_and_supporting_files()
@@ -193,15 +236,12 @@ class Cache:
             return
         data = json.dumps(value, ensure_ascii=False, indent=2)
         try:
-            f = path.open("w", encoding="UTF-8")
+            self._write_atomic(path, data)
         except OSError as exc:
             self.warn(
                 f"cache could not write path {path}: {exc}",
                 _ispytest=True,
             )
-        else:
-            with f:
-                f.write(data)
 
     def _ensure_cache_dir_and_supporting_files(self) -> None:
         """Create the cache dir and its supporting files."""
@@ -216,10 +256,7 @@ class Cache:
             path = Path(newpath)
 
             # Reset permissions to the default, see #12308.
-            # Note: there's no way to get the current umask atomically, eek.
-            umask = os.umask(0o022)
-            os.umask(umask)
-            path.chmod(0o777 - umask)
+            path.chmod(0o777 - self._umask)
 
             with open(path.joinpath("README.md"), "x", encoding="UTF-8") as f:
                 f.write(README_CONTENT)

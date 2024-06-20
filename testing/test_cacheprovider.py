@@ -3,11 +3,14 @@ from enum import Enum
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 from typing import Any
 from typing import Generator
 from typing import List
 from typing import Sequence
 from typing import Tuple
+from typing import Union
 
 from _pytest.compat import assert_never
 from _pytest.config import ExitCode
@@ -1360,3 +1363,103 @@ def test_cachedir_tag(pytester: Pytester) -> None:
 def test_clioption_with_cacheshow_and_help(pytester: Pytester) -> None:
     result = pytester.runpytest("--cache-show", "--help")
     assert result.ret == 0
+
+
+def test_key_permissions(pytester: Pytester) -> None:
+    ini_path = pytester.makeini("[pytest]")
+    config = pytester.parseconfigure()
+    assert config.cache is not None
+
+    config.cache.set("test/key", "value")
+    key_path = config.cache._getvaluepath("test/key")
+
+    assert key_path.stat().st_mode == ini_path.stat().st_mode
+
+
+def test_write_fail_permissions(pytester: Pytester) -> None:
+    pytester.makeini("[pytest]")
+    config = pytester.parseconfigure()
+    assert config.cache is not None
+
+    config.cache.set("test/key", "initial")
+    key_path = config.cache._getvaluepath("test/key")
+
+    old_key_file_mode = key_path.stat().st_mode
+    old_key_dir_mode = key_path.parent.stat().st_mode
+
+    try:
+        key_path.chmod(0)
+        key_path.parent.chmod(0)
+
+        with pytest.warns(pytest.PytestCacheWarning) as warns:
+            config.cache.set("test/key", "value")
+
+        assert len(warns) == 1
+        assert str(warns[0].message).startswith("cache could not write path")
+
+    finally:
+        key_path.parent.chmod(old_key_dir_mode)
+        key_path.chmod(old_key_file_mode)
+
+
+def test_concurrent_write(pytester: Pytester, monkeypatch: MonkeyPatch) -> None:
+    pytester.makeini("[pytest]")
+    config = pytester.parseconfigure()
+    assert config.cache is not None
+
+    config.cache.set("test/key", "initial")
+    key_path = config.cache._getvaluepath("test/key")
+
+    code_file = pytester.makepyfile(
+        f"""
+        import sys
+
+        f = open({str(key_path)!r}, mode="rb")
+        print("opened", flush=True)
+
+        line = sys.stdin.readline()
+        if line != "close\\n":
+            raise ValueError(f"Expected 'close', got {{line!r}}")
+
+        f.close()
+        print("done", flush=True)
+    """
+    )
+
+    old_replace = os.replace
+    replace_attempts = 0
+
+    def mock_replace(
+        src: "Union[str, os.PathLike[str]]",
+        dst: "Union[str, os.PathLike[str]]",
+    ) -> None:
+        try:
+            old_replace(src, dst)
+        finally:
+            if dst == key_path:
+                nonlocal replace_attempts
+                replace_attempts += 1
+                if replace_attempts == 1:
+                    print("close", file=child.stdin, flush=True)
+
+    child = pytester.popen(
+        [sys.executable, code_file],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=sys.stderr,
+        encoding="utf-8",
+    )
+
+    with child:
+        assert child.stdout.readline() == "opened\n"
+        monkeypatch.setattr("os.replace", mock_replace)
+        config.cache.set("test/key", "value")
+        assert child.stdout.read() == "done\n"
+
+    assert child.returncode == 0
+    assert config.cache.get("test/key", None) == "value"
+
+    if sys.platform.startswith("win"):
+        assert replace_attempts > 1
+    else:
+        assert replace_attempts == 1
