@@ -1,0 +1,5 @@
+* migrate formatting tests to fstrings
+* use typesafe constructs in the junitxml tests
+* separate mocktiming into ``_pytest.timing``
+
+-- by :user:`RonnyPfannschmidt`
