@@ -968,7 +968,7 @@ def test_dont_configure_on_workers(tmp_path: Path) -> None:
             self.option = self
             self.stash = Stash()
 
-        def getini(self, name: object) -> str:
+        def getini(self, name: str) -> str:
             return "pytest"
 
         junitprefix = None
