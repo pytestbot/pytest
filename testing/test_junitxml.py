@@ -77,9 +77,9 @@ def assert_attr(node: minidom.Element, **kwargs: object) -> None:
 
 class DomDocument:
     def __init__(self, dom: minidom.Document):
-        self.__node = dom
+        self._node = dom
 
-    __node: minidom.Document
+    _node: minidom.Document | minidom.Element
 
     def find_first_by_tag(self, tag: str) -> DomNode | None:
         return self.find_nth_by_tag(tag, 0)
@@ -92,7 +92,7 @@ class DomDocument:
             return maybe
 
     def find_nth_by_tag(self, tag: str, n: int) -> DomNode | None:
-        items = self.__node.getElementsByTagName(tag)
+        items = self._node.getElementsByTagName(tag)
         try:
             nth = items[n]
         except IndexError:
@@ -101,11 +101,11 @@ class DomDocument:
             return DomNode(nth)
 
     def find_by_tag(self, tag: str) -> list[DomNode]:
-        return [DomNode(x) for x in self.__node.getElementsByTagName(tag)]
+        return [DomNode(x) for x in self._node.getElementsByTagName(tag)]
 
     @property
     def children(self) -> list[DomNode]:
-        return [DomNode(x) for x in self.__node.childNodes]
+        return [DomNode(x) for x in self._node.childNodes]
 
     @property
     def get_unique_child(self) -> DomNode:
@@ -114,20 +114,20 @@ class DomDocument:
         return children[0]
 
     def toxml(self) -> str:
-        return self.__node.toxml()
+        return self._node.toxml()
 
 
 class DomNode(DomDocument):
-    __node: minidom.Element
+    _node: minidom.Element
 
     def __init__(self, dom: minidom.Element):
-        self.__node = dom
+        self._node = dom
 
     def __repr__(self) -> str:
         return self.toxml()
 
     def __getitem__(self, key: str) -> str:
-        node = self.__node.getAttributeNode(key)
+        node = self._node.getAttributeNode(key)
         if node is not None:
             return cast(str, node.value)
         else:
@@ -135,19 +135,19 @@ class DomNode(DomDocument):
 
     def assert_attr(self, **kwargs: object) -> None:
         __tracebackhide__ = True
-        return assert_attr(self.__node, **kwargs)
+        return assert_attr(self._node, **kwargs)
 
     @property
     def text(self) -> str:
-        return cast(str, self.__node.childNodes[0].wholeText)
+        return cast(str, self._node.childNodes[0].wholeText)
 
     @property
     def tag(self) -> str:
-        return self.__node.tagName
+        return self._node.tagName
 
     @property
     def next_sibling(self) -> DomNode:
-        return DomNode(self.__node.nextSibling)
+        return DomNode(self._node.nextSibling)
 
 
 parametrize_families = pytest.mark.parametrize("xunit_family", ["xunit1", "xunit2"])
