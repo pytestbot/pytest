@@ -715,10 +715,14 @@ class TestPython:
         node = dom.get_first_by_tag("testsuite")
         tnode = node.get_first_by_tag("testcase")
 
-        has_logging = junit_logging in ["system-err", "out-err", "all"]
-        expected_output_len = 1 if has_logging else 0
-        print(tnode)
-        assert len(tnode.find_by_tag("system-err")) == expected_output_len
+        has_err_logging = junit_logging in ["system-err", "out-err", "all"]
+        expected_err_output_len = 1 if has_err_logging else 0
+        assert len(tnode.find_by_tag("system-err")) == expected_err_output_len
+
+        has_out_logigng = junit_logging in ("log", "system-out", "out-err", "all")
+        expected_out_output_len = 1 if has_out_logigng else 0
+
+        assert len(tnode.find_by_tag("system-out")) == expected_out_output_len
 
     @parametrize_families
     def test_xfailure_xpass(
