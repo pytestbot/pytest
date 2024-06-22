@@ -1,4 +1,3 @@
-# mypy: allow-untyped-defs
 from __future__ import annotations
 
 from datetime import datetime
@@ -41,7 +40,7 @@ class RunAndParse:
 
     def __call__(
         self, *args: str | os.PathLike[str], family: str | None = "xunit1"
-    ) -> tuple[RunResult, DomNode]:
+    ) -> tuple[RunResult, DomDocument]:
         if family:
             args = ("-o", "junit_family=" + family, *args)
         xml_path = self.pytester.path.joinpath("junit.xml")
@@ -50,7 +49,7 @@ class RunAndParse:
             with xml_path.open(encoding="utf-8") as f:
                 self.schema.validate(f)
         xmldoc = minidom.parse(str(xml_path))
-        return result, DomNode(xmldoc)
+        return result, DomDocument(xmldoc)
 
 
 @pytest.fixture
@@ -76,25 +75,21 @@ def assert_attr(node: minidom.Element, **kwargs: object) -> None:
     assert on_node == expected
 
 
-class DomNode:
-    def __init__(self, dom: minidom.Element | minidom.Document):
+class DomDocument:
+    def __init__(self, dom: minidom.Document):
         self.__node = dom
 
-    def __repr__(self) -> str:
-        return self.__node.toxml()
+    __node: minidom.Document
 
     def find_first_by_tag(self, tag: str) -> DomNode | None:
         return self.find_nth_by_tag(tag, 0)
 
-    @property
-    def children(self) -> list[DomNode]:
-        return [type(self)(x) for x in self.__node.childNodes]
-
-    @property
-    def get_unique_child(self) -> DomNode:
-        children = self.children
-        assert len(children) == 1
-        return children[0]
+    def get_first_by_tag(self, tag: str) -> DomNode:
+        maybe = self.find_first_by_tag(tag)
+        if maybe is None:
+            raise LookupError(tag)
+        else:
+            return maybe
 
     def find_nth_by_tag(self, tag: str, n: int) -> DomNode | None:
         items = self.__node.getElementsByTagName(tag)
@@ -103,15 +98,35 @@ class DomNode:
         except IndexError:
             return None
         else:
-            return type(self)(nth)
+            return DomNode(nth)
 
     def find_by_tag(self, tag: str) -> list[DomNode]:
-        t = type(self)
-        return [t(x) for x in self.__node.getElementsByTagName(tag)]
+        return [DomNode(x) for x in self.__node.getElementsByTagName(tag)]
+
+    @property
+    def children(self) -> list[DomNode]:
+        return [DomNode(x) for x in self.__node.childNodes]
+
+    @property
+    def get_unique_child(self) -> DomNode:
+        children = self.children
+        assert len(children) == 1
+        return children[0]
+
+    def toxml(self) -> str:
+        return self.__node.toxml()
+
+
+class DomNode(DomDocument):
+    __node: minidom.Element
+
+    def __init__(self, dom: minidom.Element):
+        self.__node = dom
+
+    def __repr__(self) -> str:
+        return self.toxml()
 
     def __getitem__(self, key: str) -> str:
-        if isinstance(self.__node, minidom.Document):
-            raise TypeError(type(self.__node))
         node = self.__node.getAttributeNode(key)
         if node is not None:
             return cast(str, node.value)
@@ -120,11 +135,7 @@ class DomNode:
 
     def assert_attr(self, **kwargs: object) -> None:
         __tracebackhide__ = True
-        assert isinstance(self.__node, minidom.Element)
         return assert_attr(self.__node, **kwargs)
-
-    def toxml(self) -> str:
-        return self.__node.toxml()
 
     @property
     def text(self) -> str:
@@ -132,19 +143,11 @@ class DomNode:
 
     @property
     def tag(self) -> str:
-        assert isinstance(self.__node, minidom.Element)
         return self.__node.tagName
 
     @property
     def next_sibling(self) -> DomNode:
-        return type(self)(self.__node.nextSibling)
-
-    def get_first_by_tag(self, tag: str) -> DomNode:
-        maybe = self.find_first_by_tag(tag)
-        if maybe is None:
-            raise LookupError(tag)
-        else:
-            return maybe
+        return DomNode(self.__node.nextSibling)
 
 
 parametrize_families = pytest.mark.parametrize("xunit_family", ["xunit1", "xunit2"])
