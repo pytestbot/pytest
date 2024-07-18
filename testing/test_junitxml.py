@@ -236,8 +236,8 @@ class TestPython:
         start_time = datetime.now(timezone.utc)
         result, dom = run_and_parse(family=xunit_family)
         node = dom.get_first_by_tag("testsuite")
-        timestamp = datetime.strptime(node["timestamp"], "%Y-%m-%dT%H:%M:%S.%f")
-        assert start_time <= timestamp < datetime.now()
+        timestamp = datetime.fromisoformat(node["timestamp"])
+        assert start_time <= timestamp < datetime.now(timezone.utc)
 
     def test_timing_function(
         self,
