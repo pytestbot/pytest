@@ -1,0 +1,1 @@
+Fixed a test failure with `test_empty_NO_COLOR_and_FORCE_COLOR_ignored` when `TERM=dumb`
