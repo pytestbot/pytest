@@ -89,4 +89,6 @@ _SCOPE_INDICES = {scope: index for index, scope in enumerate(_ALL_SCOPES)}
 
 
 # Ordered list of scopes which can contain many tests (in practice all except Function).
-HIGH_SCOPES = [x for x in Scope if x is not Scope.Function and x is not Scope.Invocation]
+HIGH_SCOPES = [
+    x for x in Scope if x is not Scope.Function and x is not Scope.Invocation
+]
