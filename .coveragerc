@@ -5,8 +5,8 @@ source = src/
   *\Lib\site-packages\
 
 [report]
-skip_covered = True
-show_missing = True
+skip_covered = true
+show_missing = true
 exclude_lines =
   \#\s*pragma: no cover
   ^\s*raise NotImplementedError\b
