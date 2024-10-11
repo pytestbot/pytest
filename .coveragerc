@@ -1,5 +1,6 @@
 [paths]
-source = src/
+source =
+  src/
   */lib/python*/site-packages/
   */pypy*/site-packages/
   *\Lib\site-packages\
