@@ -1,3 +1,7 @@
+[html]
+show_contexts = true
+skip_covered = false
+
 [paths]
 _site-packages-to-src-mapping =
   src
