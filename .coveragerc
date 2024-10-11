@@ -10,7 +10,7 @@ _site-packages-to-src-mapping =
 [report]
 skip_covered = true
 show_missing = true
-exclude_lines =
+exclude_also =
   \#\s*pragma: no cover
   ^\s*raise NotImplementedError\b
   ^\s*return NotImplemented\b
