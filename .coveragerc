@@ -1,9 +1,11 @@
 [paths]
 _site-packages-to-src-mapping =
-  src/
-  */lib/python*/site-packages/
-  */pypy*/site-packages/
-  *\Lib\site-packages\
+  src
+  */src
+  *\src
+  */lib/pypy*/site-packages
+  */lib/python*/site-packages
+  *\Lib\site-packages
 
 [report]
 skip_covered = true
