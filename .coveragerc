@@ -13,6 +13,7 @@ _site-packages-to-src-mapping =
 
 [report]
 skip_covered = true
+skip_empty = true
 show_missing = true
 exclude_also =
   \#\s*pragma: no cover
