@@ -33,15 +33,15 @@ cover_pylib = false
 # https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
 # `dynamic_context` conflicts with `pytest-cov` if set here
 dynamic_context = test_function
-include =
-  src/*
-  testing/*
-  */lib/python*/site-packages/_pytest/*
-  */lib/python*/site-packages/pytest.py
-  */pypy*/site-packages/_pytest/*
-  */pypy*/site-packages/pytest.py
-  *\Lib\site-packages\_pytest\*
-  *\Lib\site-packages\pytest.py
+omit =
+  test_eggs.py
+  test_ham.py
+  test_spam.py
 parallel = true
 plugins =
 relative_files = true
+source =
+  .
+source_pkgs =
+  _pytest
+  pytest
