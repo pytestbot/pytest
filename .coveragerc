@@ -1,5 +1,5 @@
 [paths]
-source =
+_site-packages-to-src-mapping =
   src/
   */lib/python*/site-packages/
   */pypy*/site-packages/
