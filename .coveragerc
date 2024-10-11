@@ -1,16 +1,3 @@
-[run]
-include =
-  src/*
-  testing/*
-  */lib/python*/site-packages/_pytest/*
-  */lib/python*/site-packages/pytest.py
-  */pypy*/site-packages/_pytest/*
-  */pypy*/site-packages/pytest.py
-  *\Lib\site-packages\_pytest\*
-  *\Lib\site-packages\pytest.py
-parallel = 1
-branch = 1
-
 [paths]
 source = src/
   */lib/python*/site-packages/
@@ -31,3 +18,16 @@ exclude_lines =
     ^\s*@overload( |$)
 
     ^\s*@pytest\.mark\.xfail
+
+[run]
+include =
+  src/*
+  testing/*
+  */lib/python*/site-packages/_pytest/*
+  */lib/python*/site-packages/pytest.py
+  */pypy*/site-packages/_pytest/*
+  */pypy*/site-packages/pytest.py
+  *\Lib\site-packages\_pytest\*
+  *\Lib\site-packages\pytest.py
+parallel = 1
+branch = 1
