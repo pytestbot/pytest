@@ -1241,11 +1241,35 @@ class ReprEntry(TerminalRepr):
                 else:
                     indents.append(line[:indent_size])
                     source_lines.append(line[indent_size:])
-
         tw._write_source(source_lines, indents)
 
         # failure lines are always completely red and bold
+        for i in range(len(failure_lines)):
+            line_list = failure_lines[i].split()
+            # This will swap the extra comma in the multiline string with the position of the starting bracket
+            if len(line_list) == 3 and line_list[2] == "," and line_list[1] == "-":
+                prev_arg = failure_lines[i - 1]
+                failure_lines[i - 1] = failure_lines[i]
+                failure_lines[i] = prev_arg
+
         for line in failure_lines:
+            line_list = line.split()
+            # multiline case seems to be an issue with just an added ','
+            # These are edge cases for empty lists
+            if len(line_list) == 3 and line_list[2] == "," and line_list[1] == "-":
+                line = line.replace(",", "[]")
+                # This is to remove the extra whitespace between '-' and '[]'
+                line_list = list(line)
+                extra_wp_i = line_list.index("-") + 1
+                line_list.pop(extra_wp_i)
+                line = "".join(line_list)
+            elif len(line_list) == 3 and line_list[2] == "," and line_list[1] == "+":
+                line = line.replace(",", "[]")
+                # This is to remove the extra whitespace between '+' and '[]'
+                line_list = list(line)
+                extra_wp_i = line_list.index("+") + 1
+                line_list.pop(extra_wp_i)
+                line = "".join(line_list)
             tw.line(line, bold=True, red=True)
 
     def toterminal(self, tw: TerminalWriter) -> None:
