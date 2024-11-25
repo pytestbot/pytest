@@ -1,7 +1,6 @@
 # mypy: allow-untyped-defs
 from __future__ import annotations
 
-import dataclasses
 import re
 import sys
 from typing import Generator
@@ -226,24 +225,8 @@ def mock_timing(monkeypatch: MonkeyPatch):
     Time is static, and only advances through `sleep` calls, thus tests might sleep over large
     numbers and obtain accurate time() calls at the end, making tests reliable and instant.
     """
-
-    @dataclasses.dataclass
-    class MockTiming:
-        _current_time: float = 1590150050.0
-
-        def sleep(self, seconds: float) -> None:
-            self._current_time += seconds
-
-        def time(self) -> float:
-            return self._current_time
-
-        def patch(self) -> None:
-            from _pytest import timing
-
-            monkeypatch.setattr(timing, "sleep", self.sleep)
-            monkeypatch.setattr(timing, "time", self.time)
-            monkeypatch.setattr(timing, "perf_counter", self.time)
+    from _pytest.timing import MockTiming
 
     result = MockTiming()
-    result.patch()
+    result.patch(monkeypatch)
     return result

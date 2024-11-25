@@ -73,13 +73,9 @@ def _show_fixture_action(
     # Use smaller indentation the higher the scope: Session = 0, Package = 1, etc.
     scope_indent = list(reversed(Scope)).index(fixturedef._scope)
     tw.write(" " * 2 * scope_indent)
-    tw.write(
-        "{step} {scope} {fixture}".format(  # noqa: UP032 (Readability)
-            step=msg.ljust(8),  # align the output to TEARDOWN
-            scope=fixturedef.scope[0].upper(),
-            fixture=fixturedef.argname,
-        )
-    )
+
+    scopename = fixturedef.scope[0].upper()
+    tw.write(f"{msg:<8} {scopename} {fixturedef.argname}")
 
     if msg == "SETUP":
         deps = sorted(arg for arg in fixturedef.argnames if arg != "request")

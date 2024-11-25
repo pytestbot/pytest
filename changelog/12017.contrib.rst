@@ -1,0 +1,7 @@
+Mixed internal improvements:
+
+* Migrate formatting to f-strings in some tests.
+* Use type-safe constructs in JUnitXML tests.
+* Moved`` MockTiming`` into ``_pytest.timing``.
+
+-- by :user:`RonnyPfannschmidt`
