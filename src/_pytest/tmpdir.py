@@ -268,14 +268,16 @@ def tmp_path(
     # Remove the tmpdir if the policy is "failed" and the test passed.
     tmp_path_factory: TempPathFactory = request.session.config._tmp_path_factory  # type: ignore
     policy = tmp_path_factory._retention_policy
-    result_dict = request.node.stash[tmppath_result_key]
+    # The result dict is set inside pytest_runtest_makereport, but for multi-execution
+    # the report (and indeed the test status) isn't available until all subtest
+    # executions are finished. We assume that earlier executions of this item can
+    # be treated as "not failed".
+    result_dict = request.node.stash.pop(tmppath_result_key, {})
 
     if policy == "failed" and result_dict.get("call", True):
         # We do a "best effort" to remove files, but it might not be possible due to some leaked resource,
         # permissions, etc, in which case we ignore it.
         rmtree(path, ignore_errors=True)
-
-    del request.node.stash[tmppath_result_key]
 
 
 def pytest_sessionfinish(session, exitstatus: int | ExitCode):

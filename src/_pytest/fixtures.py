@@ -101,6 +101,8 @@ _FixtureCachedResult = Union[
         # Cache key.
         object,
         None,
+        # Sequence counter
+        int,
     ],
     Tuple[
         None,
@@ -108,8 +110,19 @@ _FixtureCachedResult = Union[
         object,
         # The exception and the original traceback.
         Tuple[BaseException, Optional[types.TracebackType]],
+        # Sequence counter
+        int,
     ],
 ]
+
+# Global fixture sequence counter
+_fixture_seq_counter: int = 0
+
+
+def _fixture_seq():
+    global _fixture_seq_counter
+    _fixture_seq_counter += 1
+    return _fixture_seq_counter - 1
 
 
 @dataclasses.dataclass(frozen=True)
@@ -137,7 +150,7 @@ def get_scope_package(
 def get_scope_node(node: nodes.Node, scope: Scope) -> nodes.Node | None:
     import _pytest.python
 
-    if scope is Scope.Function:
+    if scope <= Scope.Item:
         # Type ignored because this is actually safe, see:
         # https://github.com/python/mypy/issues/4717
         return node.getparent(nodes.Item)  # type: ignore[type-abstract]
@@ -185,7 +198,7 @@ def get_parametrized_fixture_argkeys(
 ) -> Iterator[FixtureArgKey]:
     """Return list of keys for all parametrized arguments which match
     the specified scope."""
-    assert scope is not Scope.Function
+    assert scope > Scope.Item
 
     try:
         callspec: CallSpec2 = item.callspec  # type: ignore[attr-defined]
@@ -244,7 +257,7 @@ def reorder_items_atscope(
     ],
     scope: Scope,
 ) -> OrderedSet[nodes.Item]:
-    if scope is Scope.Function or len(items) < 3:
+    if scope <= Scope.Item or len(items) < 3:
         return items
 
     scoped_items_by_argkey = items_by_argkey[scope]
@@ -401,7 +414,7 @@ class FixtureRequest(abc.ABC):
 
     @property
     def scope(self) -> _ScopeName:
-        """Scope string, one of "function", "class", "module", "package", "session"."""
+        """Scope string, one of "function", "item", "class", "module", "package", "session"."""
         return self._scope.value
 
     @abc.abstractmethod
@@ -546,12 +559,35 @@ class FixtureRequest(abc.ABC):
             yield current
             current = current._parent_request
 
+    def _create_subrequest(self, fixturedef) -> SubRequest:
+        """Create a SubRequest suitable for calling the given fixture"""
+        argname = fixturedef.argname
+        try:
+            callspec = self._pyfuncitem.callspec
+        except AttributeError:
+            callspec = None
+        if callspec is not None and argname in callspec.params:
+            param = callspec.params[argname]
+            param_index = callspec.indices[argname]
+            # The parametrize invocation scope overrides the fixture's scope.
+            scope = callspec._arg2scope[argname]
+        else:
+            param = NOTSET
+            param_index = 0
+            scope = fixturedef._scope
+            self._check_fixturedef_without_param(fixturedef)
+        self._check_scope(fixturedef, scope)
+        subrequest = SubRequest(
+            self, scope, param, param_index, fixturedef, _ispytest=True
+        )
+        return subrequest
+
     def _get_active_fixturedef(
         self, argname: str
     ) -> FixtureDef[object] | PseudoFixtureDef[object]:
         if argname == "request":
             cached_result = (self, [0], None)
-            return PseudoFixtureDef(cached_result, Scope.Function)
+            return PseudoFixtureDef(cached_result, Scope.Item)
 
         # If we already finished computing a fixture by this name in this item,
         # return it.
@@ -595,24 +631,7 @@ class FixtureRequest(abc.ABC):
         fixturedef = fixturedefs[index]
 
         # Prepare a SubRequest object for calling the fixture.
-        try:
-            callspec = self._pyfuncitem.callspec
-        except AttributeError:
-            callspec = None
-        if callspec is not None and argname in callspec.params:
-            param = callspec.params[argname]
-            param_index = callspec.indices[argname]
-            # The parametrize invocation scope overrides the fixture's scope.
-            scope = callspec._arg2scope[argname]
-        else:
-            param = NOTSET
-            param_index = 0
-            scope = fixturedef._scope
-            self._check_fixturedef_without_param(fixturedef)
-        self._check_scope(fixturedef, scope)
-        subrequest = SubRequest(
-            self, scope, param, param_index, fixturedef, _ispytest=True
-        )
+        subrequest = self._create_subrequest(fixturedef)
 
         # Make sure the fixture value is cached, running it if it isn't
         fixturedef.execute(request=subrequest)
@@ -634,7 +653,7 @@ class FixtureRequest(abc.ABC):
             )
             fail(msg, pytrace=False)
         if has_params:
-            frame = inspect.stack()[3]
+            frame = inspect.stack()[4]
             frameinfo = inspect.getframeinfo(frame[0])
             source_path = absolutepath(frameinfo.filename)
             source_lineno = frameinfo.lineno
@@ -657,6 +676,49 @@ class FixtureRequest(abc.ABC):
         values = [request._fixturedef for request in self._iter_chain()]
         values.reverse()
         return values
+
+    def _reset_function_scoped_fixtures(self):
+        """Can be called by an external subtest runner to reset function scoped
+        fixtures in-between function calls within a single test item."""
+        info = self._fixturemanager.getfixtureinfo(
+            node=self._pyfuncitem, func=self._pyfuncitem.function, cls=None
+        )
+
+        # Build a safe traversal order where dependencies are always processed
+        # before any dependents, by virtue of ordering them exactly as in the
+        # initial fixture setup. After reset, their relative ordering remains
+        # the same.
+        fixture_defs = []
+        for v in info.name2fixturedefs.values():
+            fixture_defs.extend(v)
+        fixture_defs.sort(key=lambda fixturedef: fixturedef._exec_seq)
+
+        current_closure = {}
+        updated_names = set()
+
+        for fixturedef in fixture_defs:
+            fixture_name = fixturedef.argname
+
+            subrequest = self._create_subrequest(fixturedef)
+            if subrequest._scope is Scope.Function:
+                subrequest._fixture_defs = current_closure
+
+                # Teardown and execute the fixture again! Note that finish(...) will
+                # invalidate dependent fixtures, so many of the later calls are no-ops.
+                fixturedef.finish(subrequest)
+                fixturedef.execute(subrequest)
+                updated_names.add(fixture_name)
+
+            # This ensures all fixtures in current_closure are in the correct state
+            # for the next subrequest (as a consequence of the safe traversal order)
+            current_closure[fixture_name] = fixturedef
+
+        kwargs = {}
+        for fixture_name in updated_names:
+            fixture_val = self.getfixturevalue(fixture_name)
+            kwargs[fixture_name] = self._pyfuncitem.funcargs[fixture_name] = fixture_val
+
+        return kwargs
 
 
 @final
@@ -740,8 +802,8 @@ class SubRequest(FixtureRequest):
     @property
     def node(self):
         scope = self._scope
-        if scope is Scope.Function:
-            # This might also be a non-function Item despite its attribute name.
+        if scope <= Scope.Item:
+            # This might also be a non-function Item
             node: nodes.Node | None = self._pyfuncitem
         elif scope is Scope.Package:
             node = get_scope_package(self._pyfuncitem, self._fixturedef)
@@ -1016,13 +1078,16 @@ class FixtureDef(Generic[FixtureValue]):
         # Can change if the fixture is executed with different parameters.
         self.cached_result: _FixtureCachedResult[FixtureValue] | None = None
         self._finalizers: Final[list[Callable[[], object]]] = []
+        # The sequence number of the last execution. Used to reconstruct
+        # initialization order.
+        self._exec_seq = None
 
         # only used to emit a deprecationwarning, can be removed in pytest9
         self._autouse = _autouse
 
     @property
     def scope(self) -> _ScopeName:
-        """Scope string, one of "function", "class", "module", "package", "session"."""
+        """Scope string, one of "function", "item", "class", "module", "package", "session"."""
         return self._scope.value
 
     def addfinalizer(self, finalizer: Callable[[], object]) -> None:
@@ -1091,6 +1156,9 @@ class FixtureDef(Generic[FixtureValue]):
             # so we need to tear it down before creating a new one.
             self.finish(request)
             assert self.cached_result is None
+
+        # We have decided to execute the fixture, so update the sequence counter.
+        self._exec_seq = _fixture_seq()
 
         # Add finalizer to requested fixtures we saved previously.
         # We make sure to do this after checking for cached value to avoid

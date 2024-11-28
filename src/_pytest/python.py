@@ -1245,7 +1245,7 @@ class Metafunc:
         # to make sure we only ever create an according fixturedef on
         # a per-scope basis. We thus store and cache the fixturedef on the
         # node related to the scope.
-        if scope_ is not Scope.Function:
+        if scope_ > Scope.Item:
             collector = self.definition.parent
             assert collector is not None
             node = get_scope_node(collector, scope_)

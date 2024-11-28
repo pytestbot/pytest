@@ -30,7 +30,7 @@
     </style>
     <!-- TestClass -->
     <circle class="class" r="130" cx="131" cy="406" />
-    <line x1="131" x2="131" y1="21" y2="446"/>
+    <line x1="131" x2="131" y1="21" y2="486"/>
     <ellipse class="fixture" rx="50" ry="25" cx="131" cy="26" />
     <text x="131" y="26">order</text>
     <ellipse class="fixture" rx="50" ry="25" cx="131" cy="96" />
@@ -41,10 +41,12 @@
     <text x="131" y="236">mod</text>
     <ellipse class="fixture" rx="50" ry="25" cx="131" cy="306" />
     <text x="131" y="306">cls</text>
-    <ellipse class="fixture" rx="50" ry="25" cx="131" cy="376" />
-    <text x="131" y="376">func</text>
-    <rect class="test" width="110" height="50" x="76" y="421" />
-    <text x="131" y="446">test_order</text>
+    <ellipse class="fixture" rx="50" ry="25" cx="131" cy="366" />
+    <text x="131" y="366">item</text>
+    <ellipse class="fixture" rx="50" ry="25" cx="131" cy="426" />
+    <text x="131" y="426">func</text>
+    <rect class="test" width="110" height="50" x="76" y="461" />
+    <text x="131" y="486">test_order</text>
     <!-- scope name -->
     <defs>
         <path d="M131,526 A 120 120 0 0 1 136 286" id="testClass"/>

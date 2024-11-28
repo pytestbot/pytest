@@ -160,6 +160,7 @@ class TestMetafunc:
                 package_fix=[DummyFixtureDef(Scope.Package)],
                 module_fix=[DummyFixtureDef(Scope.Module)],
                 class_fix=[DummyFixtureDef(Scope.Class)],
+                item_fix=[DummyFixtureDef(Scope.Item)],
                 func_fix=[DummyFixtureDef(Scope.Function)],
                 mixed_fix=[DummyFixtureDef(Scope.Module), DummyFixtureDef(Scope.Class)],
             ),
@@ -171,12 +172,14 @@ class TestMetafunc:
             return _find_parametrized_scope(argnames, fixtures_defs, indirect=indirect)
 
         assert find_scope(["func_fix"], indirect=True) == Scope.Function
+        assert find_scope(["item_fix"], indirect=True) == Scope.Item
         assert find_scope(["class_fix"], indirect=True) == Scope.Class
         assert find_scope(["module_fix"], indirect=True) == Scope.Module
         assert find_scope(["package_fix"], indirect=True) == Scope.Package
         assert find_scope(["session_fix"], indirect=True) == Scope.Session
 
         assert find_scope(["class_fix", "func_fix"], indirect=True) == Scope.Function
+        assert find_scope(["item_fix", "func_fix"], indirect=True) == Scope.Function
         assert find_scope(["func_fix", "session_fix"], indirect=True) == Scope.Function
         assert find_scope(["session_fix", "class_fix"], indirect=True) == Scope.Class
         assert (

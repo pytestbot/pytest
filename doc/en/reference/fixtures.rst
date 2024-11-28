@@ -317,6 +317,12 @@ The order breaks down to this:
 .. image:: /example/fixtures/test_fixtures_order_scope.*
     :align: center
 
+.. note:
+
+    The ``item`` and ``function`` scopes are equivalent unless using an
+    executor that runs the test function multiple times internally, such
+    as ``@hypothesis.given(...)``. If unsure, use ``function``.
+
 Fixtures of the same order execute based on dependencies
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

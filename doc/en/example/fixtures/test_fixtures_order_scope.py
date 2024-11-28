@@ -13,6 +13,11 @@ def func(order):
     order.append("function")
 
 
+@pytest.fixture(scope="item")
+def item(order):
+    order.append("item")
+
+
 @pytest.fixture(scope="class")
 def cls(order):
     order.append("class")
@@ -34,5 +39,5 @@ def sess(order):
 
 
 class TestClass:
-    def test_order(self, func, cls, mod, pack, sess, order):
-        assert order == ["session", "package", "module", "class", "function"]
+    def test_order(self, func, item, cls, mod, pack, sess, order):
+        assert order == ["session", "package", "module", "class", "item", "function"]

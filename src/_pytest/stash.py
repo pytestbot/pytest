@@ -91,6 +91,11 @@ class Stash:
         except KeyError:
             return default
 
+    def pop(self, key: StashKey[T], default: D) -> T | D:
+        """Get and remove the value for key, or return default if the key wasn't set
+        before."""
+        return self._storage.pop(key, default)
+
     def setdefault(self, key: StashKey[T], default: T) -> T:
         """Return the value of key if already set, otherwise set the value
         of key to default and return default."""
