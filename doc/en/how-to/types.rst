@@ -116,7 +116,7 @@ While parameterized tests can involve varied data types and that annotations sim
 
 
 Typing for Monkeypatching
---------------------------
+-------------------------
 Monkeypatching modifies functions or environment variables during runtime.
 Adding typing, such as `monkeypatch: pytest.MonkeyPatch`, clarifies the expected patching behaviour and reduces the risk of errors.
 
@@ -177,7 +177,6 @@ Typing Temporary Directories and Paths
 Temporary directories and paths are commonly used in pytest to create isolated environments for testing file and directory operations.
 The `tmp_path` and `tmpdir` fixtures provide these capabilities.
 Adding typing annotations enhances clarity about the types of objects these fixtures return, which is particularly useful when performing file operations.
-It also prevents misuse of monkeypatch by clarifies its API and expected inputs.
 
 Below examples are based on the pytest documentation for `Temporary Directories and Files in tests <https://github.com/pytest-dev/pytest/blob/main/doc/en/how-to/tmp_path.rst>`_, with the addition of typing annotations.
 
@@ -225,6 +224,7 @@ Typing `tmp_path: Path` explicitly defines it as a Path object, improving code r
         # compute and test histogram
 
 Here:
+
 - **tmp_path_factory: pytest.TempPathFactory:** Indicates that `tmp_path_factory` is an instance of pytest’s `TempPathFactory`, responsible for creating temporary directories and paths during testing.
 - **fn: Path:** Identifies that `fn` is a `Path` object, emphasizing its role as a file path and clarifying the expected file operations.
 - **Return type -> Path:** Specifies the fixture returns a `Path` object, clarifying its expected structure.
