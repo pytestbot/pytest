@@ -40,8 +40,8 @@ For example:
         result = add(2, 3)
         assert result == 5
 
-- Here, `test_add` is annotated with `-> None`, as it does not return a value.
-- While `-> None` typing may seem unnecessary, it ensures type checkers validate the function and helps identifying potential issues during refactoring.
+Here, `test_add` is annotated with `-> None`, as it does not return a value.
+While `-> None` typing may seem unnecessary, it ensures type checkers validate the function and helps identifying potential issues during refactoring.
 
 
 Typing Fixtures
@@ -64,7 +64,7 @@ Adding type annotations to fixtures makes it clear what data they return, which 
     def test_sample_fixture(sample_fixture: int) -> None:
         assert sample_fixture == 38
 
-- Here, `sample_fixture()` is typed to return an `int`. This ensures consistency and helps identify mismatch types during refactoring.
+Here, `sample_fixture()` is typed to return an `int`. This ensures consistency and helps identify mismatch types during refactoring.
 
 
 * Typing Fixtures with Lists and Dictionaries
@@ -93,7 +93,7 @@ This example shows how to use List and Dict types in pytest.
     def test_sample_dict(sample_dict: Dict[str, int]) -> None:
         assert sample_dict["a"] == 50
 
-- Annotating fixtures with types like List[int] and Dict[str, int] ensures data consistency and helps prevent runtime errors when performing operations.
+Annotating fixtures with types like List[int] and Dict[str, int] ensures data consistency and helps prevent runtime errors when performing operations.
 This ensures that only `int` values are allowed in the list and that `str` keys map to `int` values in the dictionary, helping avoid type-related issues.
 
 Typing Parameterized Tests
@@ -111,7 +111,7 @@ For example, you are testing if adding 1 to `input_value` results in `expected_o
     def test_increment(input_value: int, expected_output: int) -> None:
         assert input_value + 1 == expected_output
 
-- Here, typing clarifies that both `input_value` and `expected_output` are expected as integers, promoting consistency.
+Here, typing clarifies that both `input_value` and `expected_output` are expected as integers, promoting consistency.
 While parameterized tests can involve varied data types and that annotations simplify maintenance when datasets grow.
 
 
@@ -120,7 +120,7 @@ Typing for Monkeypatching
 Monkeypatching modifies functions or environment variables during runtime.
 Adding typing, such as `monkeypatch: pytest.MonkeyPatch`, clarifies the expected patching behaviour and reduces the risk of errors.
 
-  * Example of Typing Monkeypatching Environment Variables
+* Example of Typing Monkeypatching Environment Variables
 
 This example is based on the pytest documentation for `Monkeypatching <https://github.com/pytest-dev/pytest/blob/main/doc/en/how-to/monkeypatch.rst>`_, with the addition of typing annotations.
 
@@ -163,10 +163,10 @@ This example is based on the pytest documentation for `Monkeypatching <https://g
 
 Here:
 
-- **`username: Optional[str]`:** Indicates the variable `username` may either be a string or `None`.
-- **`get_os_user_lower() -> str`:** Specifies this function will return a string, providing explicit return value type.
-- **`monkeypatch` fixture is typed as `pytest.MonkeyPatch`:** Shows that it will provide an object for patching environment variables during the test. This clarifies the intended use of the fixture and helps developers to use it correctly.
-- **Fixture return `->  None`, like `mock_env_user`:** Specifies they do not return any value, but instead modify the test environment.
+- **username: Optional[str]:** Indicates the variable `username` may either be a string or `None`.
+- **get_os_user_lower() -> str:** Specifies this function will return a string, providing explicit return value type.
+- **monkeypatch fixture is typed as pytest.MonkeyPatch:** Shows that it will provide an object for patching environment variables during the test. This clarifies the intended use of the fixture and helps developers to use it correctly.
+- **Fixture return ->  None, like mock_env_user:** Specifies they do not return any value, but instead modify the test environment.
 
 Typing annotations can also be extended to `monkeypatch` usage in pytest for class methods, instance attributes, or standalone functions.
 This enhances type safety and clarity when patching the test environment.
@@ -179,9 +179,9 @@ The `tmp_path` and `tmpdir` fixtures provide these capabilities.
 Adding typing annotations enhances clarity about the types of objects these fixtures return, which is particularly useful when performing file operations.
 It also prevents misuse of monkeypatch by clarifies its API and expected inputs.
 
-Below examples are based on the pytest documentation for `Temporary Directories and Files in tests <https://github.com/pytest-dev/pytest/blob/main/doc/en/how-to/tmp_path.rst>`, with the addition of typing annotations.
+Below examples are based on the pytest documentation for `Temporary Directories and Files in tests <https://github.com/pytest-dev/pytest/blob/main/doc/en/how-to/tmp_path.rst>`_, with the addition of typing annotations.
 
-  * Typing with `tmp_path` for File Creation
+* Typing with `tmp_path` for File Creation
 
 .. code-block:: python
 
@@ -200,9 +200,9 @@ Below examples are based on the pytest documentation for `Temporary Directories 
         assert p.read_text(encoding="utf-8") == CONTENT
         assert len(list(tmp_path.iterdir())) == 1
 
-- Typing `tmp_path: Path` explicitly defines it as a Path object, improving code readability and catching type issues early.
+Typing `tmp_path: Path` explicitly defines it as a Path object, improving code readability and catching type issues early.
 
-  * Typing with `tmp_path_factory` fixture for creating temporary files during a session
+* Typing with `tmp_path_factory` fixture for creating temporary files during a session
 
 .. code-block:: python
 
@@ -224,10 +224,11 @@ Below examples are based on the pytest documentation for `Temporary Directories 
         img = load_image(image_file)
         # compute and test histogram
 
-- **`tmp_path_factory: pytest.TempPathFactory`:** Indicates that `tmp_path_factory` is an instance of pytest’s `TempPathFactory`, responsible for creating temporary directories and paths during testing.
-- **`fn: Path`:** Identifies that `fn` is a `Path` object, emphasizing its role as a file path and clarifying the expected file operations.
-- ** Return type `-> Path`:** Specifies the fixture returns a `Path` object, clarifying its expected structure.
-- **`image_file: Path`:** Defines `image_file` as a Path object, ensuring compatibility with `load_image`.
+Here:
+- **tmp_path_factory: pytest.TempPathFactory:** Indicates that `tmp_path_factory` is an instance of pytest’s `TempPathFactory`, responsible for creating temporary directories and paths during testing.
+- **fn: Path:** Identifies that `fn` is a `Path` object, emphasizing its role as a file path and clarifying the expected file operations.
+- **Return type -> Path:** Specifies the fixture returns a `Path` object, clarifying its expected structure.
+- **image_file: Path:** Defines `image_file` as a Path object, ensuring compatibility with `load_image`.
 
 Conclusion
 ----------
