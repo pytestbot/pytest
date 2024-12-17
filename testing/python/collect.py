@@ -783,6 +783,26 @@ class TestFunction:
             ]
         )
 
+    @pytest.mark.filterwarnings("default::UserWarning")
+    def test_function_used_fixture(self, pytester: Pytester):
+        pytester.makeini("[pytest]")
+        pytester.makepyfile(
+            """
+            import pytest
+            @pytest.fixture
+            def test_function():
+                pass
+        """
+        )
+        result = pytester.runpytest()
+        result.stdout.fnmatch_lines(
+            [
+                "collected 0 items",
+                "*== warnings summary ==*",
+                "*because it used the '@pytest.fixture' than becomes a fixture*",
+            ]
+        )
+
 
 class TestSorting:
     def test_check_equality(self, pytester: Pytester) -> None:

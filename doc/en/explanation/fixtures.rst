@@ -88,6 +88,65 @@ prefer.  You can also start out from existing :ref:`unittest.TestCase
 style <unittest.TestCase>`.
 
 
+Distinguishing fixtures and tests
+------------------------------------
+
+Fixtures and tests may seem similar: both are functions (or methods) and both can utilize fixtures.
+However, there is a fundamental difference:
+
+- **Tests** are the leading role.
+  They can actively use :ref:`mark <mark>` and fixtures.
+
+- **Fixtures** are supporting role.
+  They cannot use mark or tests and only be used directly or indirectly by test cases.
+
+
+Two classic traps:
+
+
+- Will not fail, because adding any tags to the fixture is invalid
+
+.. code-block:: python
+
+    import warnings
+
+
+    @pytest.fixture
+    @pytest.mark.filterwarnings("error")  # fixture cannot use mark
+    def server():
+        print("fixture is running!")
+
+
+    def test_foo(server):
+        warnings.warn(UserWarning("api v1, should use functions from v2"))
+
+
+
+- No code will execute, because the ``test_foo`` becomes a fixture after using ``@pytest.fixture``
+
+
+.. code-block:: python
+
+    @pytest.fixture
+    def server():
+        print("fixture is running!")
+
+
+    @pytest.fixture  # turn test case into fixtures
+    def test_foo(server):
+        warnings.warn(UserWarning("api v1, should use functions from v2"))
+
+
+
+.. versionadded:: 8.0
+
+Applying a mark to a fixture function now issues a warning and will become an error in pytest 9.0.
+
+
+.. versionadded:: 8.4
+
+Issues a warning when a function is not collected as a test case just because it uses ``@pytest.fixture``
+
 
 Fixture errors
 --------------

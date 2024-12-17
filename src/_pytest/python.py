@@ -354,6 +354,16 @@ class PyCollector(PyobjMixin, nodes.Collector, abc.ABC):
 
     def istestfunction(self, obj: object, name: str) -> bool:
         if self.funcnamefilter(name) or self.isnosetest(obj):
+            if isinstance(obj, fixtures.FixtureFunctionDefinition):
+                self.warn(
+                    PytestCollectionWarning(
+                        f"cannot collect test function {name!r},"
+                        f"because it used the '@pytest.fixture' than becomes a fixture "
+                        f"(from: {self.nodeid})"
+                    )
+                )
+                return False
+
             if isinstance(obj, (staticmethod, classmethod)):
                 # staticmethods and classmethods need to be unwrapped.
                 obj = safe_getattr(obj, "__func__", False)

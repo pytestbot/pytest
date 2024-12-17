@@ -1,0 +1,8 @@
+Issues a warning when a function is not collected as a test case just because it uses :py:func:`pytest.fixture`.
+This helps beginners distinguish fixtures from tests; experienced users can ignore the warning via config.
+
+.. code-block:: ini
+
+    [pytest]
+    filterwarnings =
+        ignore:.*becomes a fixture.*:pytest.PytestCollectionWarning
