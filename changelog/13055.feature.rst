@@ -1,0 +1,1 @@
+``@pytest.mark.parametrize()`` and ``pytest.Metafunc.parametrize()`` now support the ``id_names`` argument enabling auto-generated test IDs consisting of parameter name=value pairs.

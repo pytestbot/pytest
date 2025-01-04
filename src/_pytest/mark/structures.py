@@ -474,6 +474,7 @@ if TYPE_CHECKING:
             | Callable[[Any], object | None]
             | None = ...,
             scope: _ScopeName | None = ...,
+            id_names: bool = ...,
         ) -> MarkDecorator: ...
 
     class _UsefixturesMarkDecorator(MarkDecorator):
