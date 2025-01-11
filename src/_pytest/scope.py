@@ -15,7 +15,7 @@ from functools import total_ordering
 from typing import Literal
 
 
-_ScopeName = Literal["session", "package", "module", "class", "function"]
+_ScopeName = Literal["session", "package", "module", "class", "function", "invocation"]
 
 
 @total_ordering
@@ -33,6 +33,7 @@ class Scope(Enum):
     """
 
     # Scopes need to be listed from lower to higher.
+    Invocation: _ScopeName = "invocation"
     Function: _ScopeName = "function"
     Class: _ScopeName = "class"
     Module: _ScopeName = "module"
@@ -88,4 +89,6 @@ _SCOPE_INDICES = {scope: index for index, scope in enumerate(_ALL_SCOPES)}
 
 
 # Ordered list of scopes which can contain many tests (in practice all except Function).
-HIGH_SCOPES = [x for x in Scope if x is not Scope.Function]
+HIGH_SCOPES = [
+    x for x in Scope if x is not Scope.Function and x is not Scope.Invocation
+]

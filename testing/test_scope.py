@@ -18,9 +18,10 @@ def test_next_lower() -> None:
     assert Scope.Package.next_lower() is Scope.Module
     assert Scope.Module.next_lower() is Scope.Class
     assert Scope.Class.next_lower() is Scope.Function
+    assert Scope.Function.next_lower() is Scope.Invocation
 
-    with pytest.raises(ValueError, match="Function is the lower-most scope"):
-        Scope.Function.next_lower()
+    with pytest.raises(ValueError, match="Invocation is the lower-most scope"):
+        Scope.Invocation.next_lower()
 
 
 def test_next_higher() -> None:

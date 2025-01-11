@@ -134,7 +134,7 @@ def get_scope_package(
 def get_scope_node(node: nodes.Node, scope: Scope) -> nodes.Node | None:
     import _pytest.python
 
-    if scope is Scope.Function:
+    if scope is Scope.Function or scope is Scope.Invocation:
         # Type ignored because this is actually safe, see:
         # https://github.com/python/mypy/issues/4717
         return node.getparent(nodes.Item)  # type: ignore[type-abstract]
@@ -181,7 +181,7 @@ def get_parametrized_fixture_argkeys(
 ) -> Iterator[FixtureArgKey]:
     """Return list of keys for all parametrized arguments which match
     the specified scope."""
-    assert scope is not Scope.Function
+    assert scope in HIGH_SCOPES
 
     try:
         callspec: CallSpec2 = item.callspec  # type: ignore[attr-defined]
@@ -530,6 +530,14 @@ class FixtureRequest(abc.ABC):
             f'The fixture value for "{argname}" is not available.  '
             "This can happen when the fixture has already been torn down."
         )
+
+        if (
+            isinstance(fixturedef, FixtureDef)
+            and fixturedef is not None
+            and fixturedef.scope == Scope.Invocation.value
+        ):
+            self._fixture_defs.pop(argname)
+
         return fixturedef.cached_result[0]
 
     def _iter_chain(self) -> Iterator[SubRequest]:
@@ -611,9 +619,18 @@ class FixtureRequest(abc.ABC):
         )
 
         # Make sure the fixture value is cached, running it if it isn't
-        fixturedef.execute(request=subrequest)
+        try:
+            fixturedef.execute(request=subrequest)
+            self._fixture_defs[argname] = fixturedef
+        finally:
+            for arg_name in fixturedef.argnames:
+                arg_fixture = self._fixture_defs.get(arg_name)
+                if (
+                    arg_fixture is not None
+                    and arg_fixture.scope == Scope.Invocation.value
+                ):
+                    self._fixture_defs.pop(arg_name)
 
-        self._fixture_defs[argname] = fixturedef
         return fixturedef
 
     def _check_fixturedef_without_param(self, fixturedef: FixtureDef[object]) -> None:
@@ -754,7 +771,10 @@ class SubRequest(FixtureRequest):
         requested_fixturedef: FixtureDef[object] | PseudoFixtureDef[object],
         requested_scope: Scope,
     ) -> None:
-        if isinstance(requested_fixturedef, PseudoFixtureDef):
+        if (
+            isinstance(requested_fixturedef, PseudoFixtureDef)
+            or requested_scope == Scope.Invocation
+        ):
             return
         if self._scope > requested_scope:
             # Try to report something helpful.
@@ -1063,7 +1083,7 @@ class FixtureDef(Generic[FixtureValue]):
                 requested_fixtures_that_should_finalize_us.append(fixturedef)
 
         # Check for (and return) cached value/exception.
-        if self.cached_result is not None:
+        if self.cached_result is not None and self.scope != Scope.Invocation.value:
             request_cache_key = self.cache_key(request)
             cache_key = self.cached_result[1]
             try:
