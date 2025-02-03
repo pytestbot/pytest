@@ -80,6 +80,20 @@ def _colorama_workaround() -> None:
             pass
 
 
+def _readline_workaround() -> None:
+    """Ensure :mod:`readline` is imported as it fails otherwise when the
+    ``editline`` (``libedit``) backend is used.
+
+    Since Python 3.13, :mod:`readline` is imported at the root of the
+    :mod:`pdb` module, as a side effect of importing :mod:`rlcompleter`.
+    """
+    if sys.version_info >= (3, 13):
+        try:
+            import readline  # noqa: F401
+        except ImportError:
+            pass
+
+
 def _windowsconsoleio_workaround(stream: TextIO) -> None:
     """Workaround for Windows Unicode console handling.
 
@@ -141,6 +155,7 @@ def pytest_load_initial_conftests(early_config: Config) -> Generator[None]:
     if ns.capture == "fd":
         _windowsconsoleio_workaround(sys.stdout)
     _colorama_workaround()
+    _readline_workaround()
     pluginmanager = early_config.pluginmanager
     capman = CaptureManager(ns.capture)
     pluginmanager.register(capman, "capturemanager")
