@@ -79,6 +79,23 @@ def _colorama_workaround() -> None:
             pass
 
 
+def _readline_workaround() -> None:
+    """Ensure readline is imported early so it attaches to the correct stdio handles.
+
+    This isn't a problem with the default GNU readline implementation, but in
+    some configurations, Python uses libedit instead (on macOS, and for prebuilt
+    binaries such as used by uv).
+
+    In theory this is only needed if readline.backend == "libedit", but the
+    workaround consists of importing readline here, so we already worked around
+    the issue by the time we could check if we need to.
+    """
+    try:
+        import readline  # noqa: F401
+    except ImportError:
+        pass
+
+
 def _windowsconsoleio_workaround(stream: TextIO) -> None:
     """Workaround for Windows Unicode console handling.
 
@@ -140,6 +157,7 @@ def pytest_load_initial_conftests(early_config: Config) -> Generator[None]:
     if ns.capture == "fd":
         _windowsconsoleio_workaround(sys.stdout)
     _colorama_workaround()
+    _readline_workaround()
     pluginmanager = early_config.pluginmanager
     capman = CaptureManager(ns.capture)
     pluginmanager.register(capman, "capturemanager")

@@ -5,6 +5,7 @@ import contextlib
 import io
 from io import UnsupportedOperation
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -1666,3 +1667,32 @@ def test_logging_while_collecting(pytester: Pytester) -> None:
     )
     result.stdout.no_fnmatch_line("*Captured stderr call*")
     result.stdout.no_fnmatch_line("*during collection*")
+
+
+def test_libedit_workaround(pytester: Pytester) -> None:
+    pytester.makeconftest("""
+    import pytest
+
+
+    def pytest_terminal_summary(config):
+        capture = config.pluginmanager.getplugin("capturemanager")
+        capture.suspend_global_capture(in_=True)
+
+        print("Enter 'hi'")
+        value = input()
+        print(f"value: {value!r}")
+
+        capture.resume_global_capture()
+    """)
+    readline = pytest.importorskip("readline")
+    backend = getattr(readline, "backend", readline.__doc__)  # added in Python 3.13
+    print(f"Readline backend: {backend}")
+
+    child = pytester.spawn_pytest("")
+    child.expect(r"Enter 'hi'")
+    child.sendline("hi")
+    rest = child.read().decode("utf8")
+    print(rest)
+    match = re.search(r"^value: '(.*)'\r?$", rest, re.MULTILINE)
+    assert match is not None
+    assert match.group(1) == "hi"

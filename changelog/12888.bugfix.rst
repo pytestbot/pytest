@@ -1,0 +1,1 @@
+Fixed broken input when using Python 3.13+ and a ``libedit`` build of Python, such as on macOS or with uv-managed Python binaries from the ``python-build-standalone`` project. This could manifest e.g. by a broken prompt when using ``Pdb``, or seeing empty inputs with manual usage of ``input()`` and suspended capturing.
