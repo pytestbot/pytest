@@ -905,7 +905,13 @@ class TerminalReporter:
                     self._tw.line(f"{name}: {count}")
             else:
                 for item in items:
-                    self._tw.line(item.nodeid)
+                    marks = {
+                        m.name
+                        for m in item.iter_markers()
+                        if m.name not in ["usefixtures", "parametrize"]
+                    }
+                    marks_str = f" marks: {','.join(marks)}"
+                    self._tw.line(f"{item.nodeid}{marks_str}")
             return
         stack: list[Node] = []
         indent = ""
