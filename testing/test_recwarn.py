@@ -545,6 +545,38 @@ class TestWarns:
         result.assert_outcomes()
 
 
+def test_re_emit_uses_correct_module(pytester: Pytester) -> None:
+    warning_module_code = """
+import warnings
+
+def trigger_warning(msg):
+    warnings.warn(msg, UserWarning)
+"""
+    pytester.makepyfile(module_a=warning_module_code)
+    pytester.makepyfile(module_b=warning_module_code)
+
+    test_code = """
+        import pytest
+    import warnings
+    from module_a import trigger_warning as trigger_warning_a
+    from module_b import trigger_warning as trigger_warning_b
+
+    def test_ignore_warning_from_module_a():
+        with pytest.raises(pytest.fail.Exception, match="DID NOT WARN"):
+            with pytest.warns(UserWarning, match="module A.") as outer:
+                warnings.filterwarnings("ignore", category=UserWarning, module="module_a")
+                with pytest.warns(UserWarning, match="module B.") as inner: # re-emit the module A warning
+                    trigger_warning_a("module A.")
+                    trigger_warning_b("module B.")
+        """
+    # Write the test to a new file called 'test_re_emit.py'
+    pytester.makepyfile(test_re_emit=test_code)
+
+    # Run the test and assert that it passed
+    result = pytester.runpytest()
+    result.assert_outcomes(passed=1)
+
+
 def test_raise_type_error_on_invalid_warning() -> None:
     """Check pytest.warns validates warning messages are strings (#10865) or
     Warning instances (#11959)."""

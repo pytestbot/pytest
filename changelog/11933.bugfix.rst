@@ -1,0 +1,1 @@
+Fix regression with :func:`pytest.warns` using wrong module when re-emitting unmatched warnings.

@@ -8,6 +8,7 @@ from collections.abc import Generator
 from collections.abc import Iterator
 from pprint import pformat
 import re
+import sys
 from types import TracebackType
 from typing import Any
 from typing import final
@@ -328,12 +329,20 @@ class WarningsChecker(WarningsRecorder):
             # Whether or not any warnings matched, we want to re-emit all unmatched warnings.
             for w in self:
                 if not self.matches(w):
+                    module = next(
+                        (
+                            k
+                            for k, v in sys.modules.items()
+                            if getattr(v, "__file__", None) == w.filename
+                        ),
+                        None,
+                    )
                     warnings.warn_explicit(
                         message=w.message,
                         category=w.category,
                         filename=w.filename,
                         lineno=w.lineno,
-                        module=w.__module__,
+                        module=module,
                         source=w.source,
                     )
 
