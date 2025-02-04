@@ -1,0 +1,1 @@
+Added `RaisesGroup` (also available as `raises_group`) and `Matcher`, as an equivalent to `raises` for expecting `ExceptionGroup`. It includes the ability to specity multiple different expected exceptions, the structure of nested exception groups, and/or closely emulating `except_star`.
