@@ -1754,7 +1754,7 @@ passed multiple times. The expected format is ``name=value``. For example::
         [seq]   matches any character in seq
         [!seq]  matches any char not in seq
 
-   Default patterns are ``'*.egg'``, ``'.*'``, ``'_darcs'``, ``'build'``,
+   Default patterns are ``'*.egg'``, ``'.*'``, ``'_darcs'``,
    ``'CVS'``, ``'dist'``, ``'node_modules'``, ``'venv'``, ``'{arch}'``.
    Setting a ``norecursedirs`` replaces the default.  Here is an example of
    how to avoid certain directories:
@@ -1775,6 +1775,9 @@ passed multiple times. The expected format is ``name=value``. For example::
    run tests in a virtualenv with a base directory that matches ``'.*'`` you
    *must* override ``norecursedirs`` in addition to using the
    ``--collect-in-virtualenv`` flag.
+
+   Similarly, pytest will attempt to intelligently identify and igmore build
+   artifacts of a setuptools project unless ``--collect-in-build`` is used.
 
 
 .. confval:: python_classes
@@ -2163,6 +2166,8 @@ All the command-line flags can be obtained by running ``pytest --help``::
       --keep-duplicates     Keep duplicate tests
       --collect-in-virtualenv
                             Don't ignore tests in a local virtualenv directory
+      --collect-in-build
+                            Don't ignore tests in a local build directory
       --import-mode={prepend,append,importlib}
                             Prepend/append to sys.path when importing test
                             modules and conftest files. Default: prepend.

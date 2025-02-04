@@ -1,0 +1,4 @@
+Conditionally ignore collection of setuptools artifacts dirnames only if the
+directories reside inside a setuptools project, i.e. `setup.cfg` is present alongside
+a `setup.py` or a `pyproject.toml` with setuptools configuration inside.
+You can use the new `--collect-in-build` to force collection of ignored directories.
