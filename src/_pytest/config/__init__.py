@@ -1940,6 +1940,13 @@ def parse_warning_filter(
         raise UsageError(error_template.format(error=exception_text)) from None
     if message and escape:
         message = re.escape(message)
+    if "()" in message:
+        warning = dedent(
+            """
+            An empty group '()' will not match a string that contains literal parenthesis
+            """
+        )
+        warnings.warn(PytestConfigWarning(warning))
     if module and escape:
         module = re.escape(module) + r"\Z"
     if lineno_:
