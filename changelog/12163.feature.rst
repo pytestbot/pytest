@@ -1,0 +1,1 @@
+Teardown fixtures now can access the information about current teardown exceptions in `node.teardown_exceptions`.

@@ -543,19 +543,20 @@ class SetupState:
             if list(self.stack.keys()) == needed_collectors[: len(self.stack)]:
                 break
             node, (finalizers, _) = self.stack.popitem()
-            these_exceptions = []
             while finalizers:
                 fin = finalizers.pop()
                 try:
                     fin()
                 except TEST_OUTCOME as e:
-                    these_exceptions.append(e)
+                    node.teardown_exceptions.append(e)
 
-            if len(these_exceptions) == 1:
-                exceptions.extend(these_exceptions)
-            elif these_exceptions:
+            if len(node.teardown_exceptions) == 1:
+                exceptions.extend(node.teardown_exceptions)
+            elif node.teardown_exceptions:
                 msg = f"errors while tearing down {node!r}"
-                exceptions.append(BaseExceptionGroup(msg, these_exceptions[::-1]))
+                exceptions.append(
+                    BaseExceptionGroup(msg, node.teardown_exceptions[::-1])
+                )
 
         if len(exceptions) == 1:
             raise exceptions[0]

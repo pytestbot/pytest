@@ -1600,3 +1600,30 @@ def test_no_terminal_plugin(pytester: Pytester) -> None:
     pytester.makepyfile("def test(): assert 1 == 2")
     result = pytester.runpytest("-pno:terminal", "-s")
     assert result.ret == ExitCode.TESTS_FAILED
+
+
+def test_get_exception_on_teardown_failure(pytester: Pytester) -> None:
+    """Smoke test to be sure teardown exceptions handled properly via node property"""
+    pytester.makepyfile(
+        conftest="""
+        import sys
+        import pytest
+        def pytest_exception_interact(node, call, report):
+            sys.stderr.write("teardown_exceptions: `{}`".format(node.teardown_exceptions))
+
+        @pytest.fixture
+        def mylist():
+            yield
+            raise AssertionError(111)
+        """,
+        test_file="""
+        def test_func(mylist):
+            assert True
+        """,
+    )
+    result = pytester.runpytest()
+    assert result.ret == ExitCode.TESTS_FAILED
+    assert "teardown_exceptions: `[AssertionError(111)]`" in result.stderr.str()
+    # Related to the #9909 - first the test passes, then the teardown fails, what
+    # results in a double-reporting.
+    result.assert_outcomes(passed=1, errors=1)
