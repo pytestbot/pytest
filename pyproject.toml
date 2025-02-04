@@ -51,6 +51,7 @@ dependencies = [
     "iniconfig",
     "packaging",
     "pluggy>=1.5,<2",
+    "pygments>=2.7.2",
     "tomli>=1; python_version<'3.11'",
 ]
 optional-dependencies.dev = [
@@ -58,7 +59,6 @@ optional-dependencies.dev = [
     "attrs>=19.2",
     "hypothesis>=3.56",
     "mock",
-    "pygments>=2.7.2",
     "requests",
     "setuptools",
     "xmlschema",

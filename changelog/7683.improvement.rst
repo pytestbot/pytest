@@ -1,0 +1,1 @@
+The formerly optional ``pygments`` dependency is now required, causing output always to be source-highlighted (unless disabled via the ``--code-highlight=no`` CLI option).

@@ -2019,6 +2019,16 @@ def test_reprcompare_verbose_long() -> None:
                 "{bold}{red}E         {light-green}+     'number-is-5': 5,{hl-reset}{endline}{reset}",
             ],
         ),
+        (
+            """
+            def test():
+                assert "abcd" == "abce"
+            """,
+            [
+                "{bold}{red}E         {reset}{light-red}- abce{hl-reset}{endline}{reset}",
+                "{bold}{red}E         {light-green}+ abcd{hl-reset}{endline}{reset}",
+            ],
+        ),
     ),
 )
 def test_comparisons_handle_colors(
