@@ -26,6 +26,11 @@ Pytest supports several ways to run and select tests from the command-line or fr
 
     pytest test_mod.py
 
+When passing a path as a positional argument, pytest does not recursively
+search when given a file basename. If you want to pass a path to a file, you
+must pass either a relative path or an absolute path. Otherwise, consider the
+below keyword expressions instead.
+
 **Run tests in a directory**
 
 .. code-block:: bash

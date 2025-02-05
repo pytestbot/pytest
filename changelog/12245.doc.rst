@@ -1,0 +1,1 @@
+Added paragraph in ``Specifying which tests to run`` documentation to clarify pytest capabilities when trying to run tests for a single module.
