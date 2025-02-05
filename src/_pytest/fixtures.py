@@ -1608,6 +1608,23 @@ class FixtureManager:
         # to re-discover fixturedefs again for each fixturename
         # (discovering matching fixtures for a given name/node is expensive).
 
+        def dependent_fixtures_argnames(
+            fixture_defs: Sequence[FixtureDef[Any]],
+        ) -> List[str]:
+            # Initialize with the argnames of the last fixture
+            dependent_argnames = list(fixture_defs[-1].argnames)
+            # Iterate over the list in reverse order, skipping the last element already processed.
+            for index, current_fixture in enumerate(
+                reversed(fixture_defs[:-1]), start=1
+            ):
+                if current_fixture.argname in fixture_defs[-index].argnames:
+                    for argname in current_fixture.argnames:
+                        if argname not in dependent_argnames:
+                            dependent_argnames.append(argname)
+                else:
+                    break
+            return dependent_argnames
+
         fixturenames_closure = list(initialnames)
 
         arg2fixturedefs: dict[str, Sequence[FixtureDef[Any]]] = {}
@@ -1622,7 +1639,8 @@ class FixtureManager:
                 fixturedefs = self.getfixturedefs(argname, parentnode)
                 if fixturedefs:
                     arg2fixturedefs[argname] = fixturedefs
-                    for arg in fixturedefs[-1].argnames:
+                    argnames = dependent_fixtures_argnames(fixturedefs)
+                    for arg in argnames:
                         if arg not in fixturenames_closure:
                             fixturenames_closure.append(arg)
 

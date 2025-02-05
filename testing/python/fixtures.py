@@ -1903,6 +1903,53 @@ class TestFixtureManagerParseFactories:
         result = pytester.runpytest("foo")
         result.stdout.fnmatch_lines(["*passed*"])
 
+    def test_get_fixture_clousure_override_conftest_module_and_class(
+        self, pytester: Pytester
+    ):
+        pytester.makepyfile(
+            """\
+            import pytest
+
+            @pytest.fixture
+            def hello(param, hello):
+                return "module"
+            class TestClass(object):
+                @pytest.fixture
+                def hello(self, hello):
+                    return "class"
+                @pytest.mark.parametrize("param", ["foo"])
+                def test_hello(self, item, hello, fm):
+                    print(item)
+                    clousurelist, _ = fm.getfixtureclosure(item, ("hello",), {})
+                    assert clousurelist == ["hello", "param", "request"]
+            """
+        )
+        reprec = pytester.inline_run("-s")
+        reprec.assertoutcome(passed=1)
+
+    def test_get_fixture_clousure_override_module_and_class(self, pytester: Pytester):
+        pytester.makepyfile(
+            """\
+                import pytest
+
+                @pytest.fixture
+                def hello(param):
+                    return "module"
+                class TestClass(object):
+                    @pytest.fixture
+                    def hello(self, hello):
+                        return "class"
+                    @pytest.mark.parametrize("param", ["foo"])
+                    def test_hello(self, item, hello, fm):
+                        print(item)
+                        clousurelist, _ = fm.getfixtureclosure(item, ("hello",), {})
+                        print(clousurelist)
+                        assert clousurelist == ["hello", "param"]
+                """
+        )
+        reprec = pytester.inline_run("-s")
+        reprec.assertoutcome(passed=1)
+
 
 class TestAutouseDiscovery:
     @pytest.fixture

@@ -499,6 +499,50 @@ def test_parametrized_with_kwargs(pytester: Pytester) -> None:
     assert result.ret == 0
 
 
+def test_parametrize_overriden_extended_fixture(pytester: Pytester) -> None:
+    """Overriden fixtures must pass over dependend fixtures for parameterization (#12091)"""
+    pytester.makeconftest(
+        """
+        import pytest
+
+        @pytest.fixture
+        def not_needed():
+            assert False, "Should not be called!"
+
+        @pytest.fixture
+        def main(foo):
+            assert False, "Should not be called!"
+
+    """
+    )
+
+    py_file = pytester.makepyfile(
+        """\
+        import pytest
+
+        @pytest.fixture
+        def param() -> int:
+            return 1
+
+        @pytest.fixture
+        def main(param: int) -> int:
+            return sum(range(param + 1))
+
+
+        class TestFoo:
+            @pytest.fixture
+            def main(self, main: int) -> int:
+                return main
+
+            @pytest.mark.parametrize("param", [2])
+            def test_foo(self, main: int) -> None:
+                assert main == 3
+        """
+    )
+    result = pytester.runpytest(py_file)
+    assert result.ret == 0
+
+
 def test_parametrize_iterator(pytester: Pytester) -> None:
     """`parametrize` should work with generators (#5354)."""
     py_file = pytester.makepyfile(
