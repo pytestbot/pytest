@@ -261,9 +261,8 @@ class ApproxMapping(ApproxBase):
         max_abs_diff = -math.inf
         max_rel_diff = -math.inf
         different_ids = []
-        for (approx_key, approx_value), other_value in zip(
-            approx_side_as_map.items(), other_side.values()
-        ):
+        for approx_key, approx_value in approx_side_as_map.items():
+            other_value = other_side.get(approx_key, None)
             if approx_value != other_value:
                 if approx_value.expected is not None and other_value is not None:
                     try:

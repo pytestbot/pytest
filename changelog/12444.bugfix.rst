@@ -1,0 +1,1 @@
+In :pr:`13046`, fixes a bug where the .approx method incorrectly reported all key-value pairs as mismatched when only one was incorrect in unordered dictionaries.

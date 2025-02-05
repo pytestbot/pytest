@@ -1022,6 +1022,17 @@ class TestApprox:
         assert b == pytest.approx(a, abs=2)
         assert b != pytest.approx(a, abs=0.5)
 
+    def test_approx_unordered_dicts_with_mismatch(self):
+        """https://github.com/pytest-dev/pytest/pull/12445"""
+        dict1 = {"a": 1.0, "b": 1.0, "c": 3.1}
+        dict2 = {"b": 2.0, "a": 1.0, "c": 3.1}  # 'b' has a different value
+
+        with pytest.raises(
+            AssertionError,
+            match="Mismatched elements: 1 / 3:\n  Max absolute difference: 1.0\n",
+        ):
+            assert dict1 == pytest.approx(dict2)
+
 
 class MyVec3:  # incomplete
     """sequence like"""
