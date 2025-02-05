@@ -5009,3 +5009,83 @@ def test_subfixture_teardown_order(pytester: Pytester) -> None:
     )
     result = pytester.runpytest()
     assert result.ret == 0
+
+
+@pytest.mark.filterwarnings("default")
+def test_fixture_name_conflict(pytester: Pytester) -> None:
+    """Repetitive coverage at the same level is an unexpected behavior (#12952)."""
+    pytester.makepyfile(
+        """
+        import pytest
+
+        @pytest.fixture(name="cache")
+        def c1():  # Create first, but register later
+            return 1
+
+        @pytest.fixture(name="cache")
+        def c0():  # Create later, but register first
+            return 0
+
+        def test_value(cache):
+            assert cache == 0  # Failed, `cache` from c1
+
+
+        class Test:
+            @pytest.fixture(name="cache")
+            def c1(self):
+                return 11
+
+            @pytest.fixture(name="cache")
+            def c0(self):
+                return 22
+
+            def test_value(self, cache):
+                assert cache == 0
+    """
+    )
+
+    result = pytester.runpytest()
+    result.stdout.fnmatch_lines(["* PytestWarning: Fixture definition conflict:*"])
+    result.stdout.fnmatch_lines(
+        [
+            "* 'cache' has multiple implementations:['<function c0 at *>', '<function c1 at *>'*"
+        ]
+    )
+    result.stdout.fnmatch_lines(
+        [
+            "* 'cache' has multiple implementations:['<bound method Test.c0 of <*.Test object at *>', '<bound method *"
+        ]
+    )
+
+
+@pytest.mark.filterwarnings("default")
+def test_fixture_name_conflict_with_conftest(pytester: Pytester) -> None:
+    """
+    Related to #12952,
+    pyester is unable to capture warnings and errors from root conftest.
+    So in this tests will cover it.
+    """
+    pytester.makeini("[pytest]")
+    pytester.makeconftest(
+        """
+        import pytest
+
+        @pytest.fixture(name="cache")
+        def c1():  # Create first, but register later
+            return 1
+
+        @pytest.fixture(name="cache")
+        def c0():  # Create later, but register first
+            return 0
+    """
+    )
+
+    pytester.makepyfile(
+        """
+        def test_value(cache):
+            assert cache == 0  # Failed, `cache` from c1
+    """
+    )
+
+    with pytest.warns(pytest.PytestWarning):
+        pytester.runpytest()

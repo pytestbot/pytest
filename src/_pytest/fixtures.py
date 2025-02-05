@@ -1793,6 +1793,10 @@ class FixtureManager:
             holderobj_tp = holderobj
 
         self._holderobjseen.add(holderobj)
+
+        # Collect different implementations of the same fixture to check for duplicates.
+        fixture_name_map: dict[str, list[str]] = {}
+
         for name in dir(holderobj):
             # The attribute can be an arbitrary descriptor, so the attribute
             # access below can raise. safe_getattr() ignores such exceptions.
@@ -1813,6 +1817,9 @@ class FixtureManager:
 
                 func = obj._get_wrapped_function()
 
+                fixture_name_map.setdefault(fixture_name, [])
+                fixture_name_map[fixture_name].append(f"{func!r}")
+
                 self._register_fixture(
                     name=fixture_name,
                     nodeid=nodeid,
@@ -1822,6 +1829,36 @@ class FixtureManager:
                     ids=marker.ids,
                     autouse=marker.autouse,
                 )
+
+        # Check different implementations of the same fixture (#12952).
+        not_by_plugin = nodeid or getattr(holderobj, "__name__", "") == "conftest"
+
+        # If the fixture from a plugin, Skip check.
+        if not_by_plugin:
+            for fixture_name, func_list in fixture_name_map.items():
+                if len(func_list) > 1:
+                    msg = (
+                        f"Fixture definition conflict: \n"
+                        f"{fixture_name!r} has multiple implementations:"
+                        f"{func_list!r}"
+                    )
+
+                    if isinstance(node_or_obj, nodes.Node):  # is a tests file
+                        node_or_obj.warn(PytestWarning(msg))
+                    else:
+                        if hasattr(node_or_obj, "__file__"):  # is a conftest
+                            filename = getattr(node_or_obj, "__file__")
+                            lineno = 1
+                        else:  # is a test class
+                            filename = inspect.getfile(type(node_or_obj))
+                            lineno = inspect.getsourcelines(type(node_or_obj))[1]
+
+                        warnings.warn_explicit(
+                            PytestWarning(msg),
+                            category=None,
+                            filename=filename,
+                            lineno=lineno,
+                        )
 
     def getfixturedefs(
         self, argname: str, node: nodes.Node
