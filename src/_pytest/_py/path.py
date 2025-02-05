@@ -137,7 +137,7 @@ class NeverRaised(Exception):
 
 class Visitor:
     def __init__(self, fil, rec, ignore, bf, sort):
-        if isinstance(fil, str):
+        if isinstance(fil, (str, bytes)):
             fil = FNMatcher(fil)
         if isinstance(rec, str):
             self.rec: Callable[[LocalPath], bool] = FNMatcher(rec)

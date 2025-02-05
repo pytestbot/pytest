@@ -209,7 +209,7 @@ class CommonFSTests:
 
     @pytest.mark.parametrize(
         "fil",
-        ["*dir", "*dir", pytest.mark.skip("sys.version_info < (3,6)")(b"*dir")],
+        ["*dir", "*dir", pytest.mark.skipif(sys.version_info < (3, 10))(b"*dir")],
     )
     def test_visit_filterfunc_is_string(self, path1, fil):
         lst = []
@@ -463,12 +463,10 @@ class CommonFSTests:
 
         assert fspath(path1) == path1.strpath
 
-    @pytest.mark.skip("sys.version_info < (3,6)")
     def test_fspath_open(self, path1):
         f = path1.join("opentestfile")
         open(f)
 
-    @pytest.mark.skip("sys.version_info < (3,6)")
     def test_fspath_fsencode(self, path1):
         from os import fsencode
 
