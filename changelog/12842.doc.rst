@@ -1,0 +1,2 @@
+Added dedicated page about using types with pytest
+See :ref:`types` for detailed usage.
