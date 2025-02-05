@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import os
 from pathlib import Path
 import sys
+from typing import TYPE_CHECKING
 
 import iniconfig
 
@@ -13,6 +14,14 @@ from _pytest.outcomes import fail
 from _pytest.pathlib import absolutepath
 from _pytest.pathlib import commonpath
 from _pytest.pathlib import safe_exists
+
+
+if TYPE_CHECKING:
+    from typing import Union
+
+    from typing_extensions import TypeAlias
+
+    ConfigDict: TypeAlias = dict[str, Union[str, int, float, list[str]]]
 
 
 def _parse_ini_config(path: Path) -> iniconfig.IniConfig:
@@ -29,7 +38,7 @@ def _parse_ini_config(path: Path) -> iniconfig.IniConfig:
 
 def load_config_dict_from_file(
     filepath: Path,
-) -> dict[str, str | list[str]] | None:
+) -> ConfigDict | None:
     """Load pytest configuration from the given file path, if supported.
 
     Return None if the file does not contain valid pytest configuration.
@@ -85,7 +94,7 @@ def load_config_dict_from_file(
 def locate_config(
     invocation_dir: Path,
     args: Iterable[Path],
-) -> tuple[Path | None, Path | None, dict[str, str | list[str]]]:
+) -> tuple[Path | None, Path | None, ConfigDict]:
     """Search in the list of arguments for a valid ini-file for pytest,
     and return a tuple of (rootdir, inifile, cfg-dict)."""
     config_names = [
@@ -172,7 +181,7 @@ def determine_setup(
     args: Sequence[str],
     rootdir_cmd_arg: str | None,
     invocation_dir: Path,
-) -> tuple[Path, Path | None, dict[str, str | list[str]]]:
+) -> tuple[Path, Path | None, ConfigDict]:
     """Determine the rootdir, inifile and ini configuration values from the
     command line arguments.
 

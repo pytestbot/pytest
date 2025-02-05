@@ -1,0 +1,17 @@
+The ``type`` parameter of the ``parser.addini`` method now accepts `"int"` and ``"float"`` parameters, facilitating the parsing of configuration values in the configuration file.
+
+Example:
+
+.. code-block:: python
+
+  def pytest_addoption(parser):
+      parser.addini("int_value", type="int", default=2, help="my int value")
+      parser.addini("float_value", type="float", default=4.2, help="my float value")
+
+The `pytest.ini` file:
+
+.. code-block:: ini
+
+  [pytest]
+  int_value = 3
+  float_value = 5.4
