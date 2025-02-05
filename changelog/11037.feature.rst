@@ -1,0 +1,1 @@
+Added stdio as option for --show-capture to have both stderr and stdout output together.

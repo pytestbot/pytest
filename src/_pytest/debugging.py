@@ -345,7 +345,13 @@ def _enter_pdb(
         ("stderr", rep.capstderr),
         ("log", rep.caplog),
     ):
-        if showcapture in (sectionname, "all") and content:
+        if (
+            showcapture in (sectionname, "all")
+            or (
+                showcapture == "stdio"
+                and ("stdout" in sectionname or "stderr" in sectionname)
+            )
+        ) and content:
             tw.sep(">", "captured " + sectionname)
             if content[-1:] == "\n":
                 content = content[:-1]
