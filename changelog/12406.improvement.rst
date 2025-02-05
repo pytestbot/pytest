@@ -1,0 +1,2 @@
+The ``_diff_text()`` function now truncates texts before diffing them
+if not in verbose mode.  -- by :user:`devdanzin`.
