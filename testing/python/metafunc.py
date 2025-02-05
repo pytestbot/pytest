@@ -199,18 +199,28 @@ class TestMetafunc:
         )
         assert find_scope(["mixed_fix"], indirect=True) == Scope.Class
 
-    def test_parametrize_and_id(self) -> None:
+    @pytest.mark.parametrize("id_names", (False, True))
+    def test_parametrize_and_id(self, id_names: bool) -> None:
         def func(x, y):
             pass
 
         metafunc = self.Metafunc(func)
 
         metafunc.parametrize("x", [1, 2], ids=["basic", "advanced"])
-        metafunc.parametrize("y", ["abc", "def"])
+        metafunc.parametrize("y", ["abc", "def"], id_names=id_names)
         ids = [x.id for x in metafunc._calls]
-        assert ids == ["basic-abc", "basic-def", "advanced-abc", "advanced-def"]
+        if id_names:
+            assert ids == [
+                "basic-y=abc",
+                "basic-y=def",
+                "advanced-y=abc",
+                "advanced-y=def",
+            ]
+        else:
+            assert ids == ["basic-abc", "basic-def", "advanced-abc", "advanced-def"]
 
-    def test_parametrize_and_id_unicode(self) -> None:
+    @pytest.mark.parametrize("id_names", (False, True))
+    def test_parametrize_and_id_unicode(self, id_names: bool) -> None:
         """Allow unicode strings for "ids" parameter in Python 2 (##1905)"""
 
         def func(x):
@@ -220,6 +230,18 @@ class TestMetafunc:
         metafunc.parametrize("x", [1, 2], ids=["basic", "advanced"])
         ids = [x.id for x in metafunc._calls]
         assert ids == ["basic", "advanced"]
+
+    def test_parametrize_with_bad_ids_name_combination(self) -> None:
+        def func(x):
+            pass
+
+        metafunc = self.Metafunc(func)
+
+        with pytest.raises(
+            fail.Exception,
+            match="'id_names' must not be combined with 'ids'",
+        ):
+            metafunc.parametrize("x", [1, 2], ids=["basic", "advanced"], id_names=True)
 
     def test_parametrize_with_wrong_number_of_ids(self) -> None:
         def func(x, y):
