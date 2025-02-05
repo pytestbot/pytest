@@ -52,6 +52,7 @@ dependencies = [
     "packaging",
     "pluggy>=1.5,<2",
     "tomli>=1; python_version<'3.11'",
+    "typing-extensions; python_version<'3.10'",
 ]
 optional-dependencies.dev = [
     "argcomplete",

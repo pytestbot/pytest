@@ -75,6 +75,13 @@ from _pytest.warning_types import PytestWarning
 if sys.version_info < (3, 11):
     from exceptiongroup import BaseExceptionGroup
 
+if sys.version_info < (3, 10):
+    from typing_extensions import ParamSpec
+    from typing_extensions import TypeAlias
+else:
+    from typing import ParamSpec
+    from typing import TypeAlias
+
 
 if TYPE_CHECKING:
     from _pytest.python import CallSpec2
@@ -84,14 +91,20 @@ if TYPE_CHECKING:
 
 # The value of the fixture -- return/yield of the fixture function (type variable).
 FixtureValue = TypeVar("FixtureValue")
-# The type of the fixture function (type variable).
-FixtureFunction = TypeVar("FixtureFunction", bound=Callable[..., object])
-# The type of a fixture function (type alias generic in fixture value).
-_FixtureFunc = Union[
-    Callable[..., FixtureValue], Callable[..., Generator[FixtureValue]]
+
+# The parameters that a fixture function receives.
+FixtureParams = ParamSpec("FixtureParams")
+
+# A dict of fixture name -> its FixtureDef.
+FixtureDefDict: TypeAlias = dict[str, "FixtureDef[Any]"]
+
+# The type of fixture function (type alias generic in fixture params and value).
+_FixtureFunc: TypeAlias = Union[
+    Callable[FixtureParams, FixtureValue],
+    Callable[FixtureParams, Generator[FixtureValue, None, None]],
 ]
 # The type of FixtureDef.cached_result (type alias generic in fixture value).
-_FixtureCachedResult = Union[
+_FixtureCachedResult: TypeAlias = Union[
     tuple[
         # The result.
         FixtureValue,
@@ -360,7 +373,7 @@ class FixtureRequest(abc.ABC):
         pyfuncitem: Function,
         fixturename: str | None,
         arg2fixturedefs: dict[str, Sequence[FixtureDef[Any]]],
-        fixture_defs: dict[str, FixtureDef[Any]],
+        fixture_defs: FixtureDefDict,
         *,
         _ispytest: bool = False,
     ) -> None:
@@ -888,7 +901,9 @@ class FixtureLookupErrorRepr(TerminalRepr):
 
 
 def call_fixture_func(
-    fixturefunc: _FixtureFunc[FixtureValue], request: FixtureRequest, kwargs
+    fixturefunc: _FixtureFunc[FixtureParams, FixtureValue],
+    request: FixtureRequest,
+    kwargs: FixtureParams.kwargs,
 ) -> FixtureValue:
     if inspect.isgeneratorfunction(fixturefunc):
         fixturefunc = cast(Callable[..., Generator[FixtureValue]], fixturefunc)
@@ -959,7 +974,7 @@ class FixtureDef(Generic[FixtureValue]):
         config: Config,
         baseid: str | None,
         argname: str,
-        func: _FixtureFunc[FixtureValue],
+        func: _FixtureFunc[Any, FixtureValue],
         scope: Scope | _ScopeName | Callable[[str, Config], _ScopeName] | None,
         params: Sequence[object] | None,
         ids: tuple[object | None, ...] | Callable[[Any], object | None] | None = None,
@@ -1115,7 +1130,7 @@ class FixtureDef(Generic[FixtureValue]):
 
 def resolve_fixture_function(
     fixturedef: FixtureDef[FixtureValue], request: FixtureRequest
-) -> _FixtureFunc[FixtureValue]:
+) -> _FixtureFunc[Any, FixtureValue]:
     """Get the actual callable that can be called to obtain the fixture
     value."""
     fixturefunc = fixturedef.func
@@ -1194,7 +1209,9 @@ class FixtureFunctionMarker:
     def __post_init__(self, _ispytest: bool) -> None:
         check_ispytest(_ispytest)
 
-    def __call__(self, function: FixtureFunction) -> FixtureFunctionDefinition:
+    def __call__(
+        self, function: Callable[FixtureParams, FixtureValue]
+    ) -> FixtureFunctionDefinition[FixtureParams, FixtureValue]:
         if inspect.isclass(function):
             raise ValueError("class fixtures not supported (maybe in the future)")
 
@@ -1221,12 +1238,10 @@ class FixtureFunctionMarker:
         return fixture_definition
 
 
-# TODO: paramspec/return type annotation tracking and storing
-class FixtureFunctionDefinition:
+class FixtureFunctionDefinition(Generic[FixtureParams, FixtureValue]):
     def __init__(
         self,
-        *,
-        function: Callable[..., Any],
+        function: Callable[FixtureParams, FixtureValue],
         fixture_function_marker: FixtureFunctionMarker,
         instance: object | None = None,
         _ispytest: bool = False,
@@ -1239,7 +1254,7 @@ class FixtureFunctionDefinition:
         self._fixture_function_marker = fixture_function_marker
         if instance is not None:
             self._fixture_function = cast(
-                Callable[..., Any], function.__get__(instance)
+                Callable[FixtureParams, FixtureValue], function.__get__(instance)
             )
         else:
             self._fixture_function = function
@@ -1248,7 +1263,9 @@ class FixtureFunctionDefinition:
     def __repr__(self) -> str:
         return f"<pytest_fixture({self._fixture_function})>"
 
-    def __get__(self, instance, owner=None):
+    def __get__(
+        self, instance: object, owner: type | None = None
+    ) -> FixtureFunctionDefinition[FixtureParams, FixtureValue]:
         """Behave like a method if the function it was applied to was a method."""
         return FixtureFunctionDefinition(
             function=self._fixture_function,
@@ -1272,14 +1289,14 @@ class FixtureFunctionDefinition:
 
 @overload
 def fixture(
-    fixture_function: Callable[..., object],
+    fixture_function: Callable[FixtureParams, FixtureValue],
     *,
     scope: _ScopeName | Callable[[str, Config], _ScopeName] = ...,
     params: Iterable[object] | None = ...,
     autouse: bool = ...,
     ids: Sequence[object | None] | Callable[[Any], object | None] | None = ...,
     name: str | None = ...,
-) -> FixtureFunctionDefinition: ...
+) -> FixtureFunctionDefinition[FixtureParams, FixtureValue]: ...
 
 
 @overload
@@ -1295,14 +1312,14 @@ def fixture(
 
 
 def fixture(
-    fixture_function: FixtureFunction | None = None,
+    fixture_function: Callable[FixtureParams, FixtureValue] | None = None,
     *,
     scope: _ScopeName | Callable[[str, Config], _ScopeName] = "function",
     params: Iterable[object] | None = None,
     autouse: bool = False,
     ids: Sequence[object | None] | Callable[[Any], object | None] | None = None,
     name: str | None = None,
-) -> FixtureFunctionMarker | FixtureFunctionDefinition:
+) -> FixtureFunctionMarker | FixtureFunctionDefinition[FixtureParams, FixtureValue]:
     """Decorator to mark a fixture factory function.
 
     This decorator can be used, with or without parameters, to define a
@@ -1690,7 +1707,7 @@ class FixtureManager:
         self,
         *,
         name: str,
-        func: _FixtureFunc[object],
+        func: _FixtureFunc[Any, object],
         nodeid: str | None,
         scope: Scope | _ScopeName | Callable[[str, Config], _ScopeName] = "function",
         params: Sequence[object] | None = None,

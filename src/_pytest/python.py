@@ -51,6 +51,7 @@ from _pytest.config import hookimpl
 from _pytest.config.argparsing import Parser
 from _pytest.deprecated import check_ispytest
 from _pytest.fixtures import FixtureDef
+from _pytest.fixtures import FixtureDefDict
 from _pytest.fixtures import FixtureRequest
 from _pytest.fixtures import FuncFixtureInfo
 from _pytest.fixtures import get_scope_node
@@ -1085,7 +1086,7 @@ def get_direct_param_fixture_func(request: FixtureRequest) -> Any:
 
 
 # Used for storing pseudo fixturedefs for direct parametrization.
-name2pseudofixturedef_key = StashKey[dict[str, FixtureDef[Any]]]()
+name2pseudofixturedef_key = StashKey[FixtureDefDict]()
 
 
 @final
@@ -1271,7 +1272,7 @@ class Metafunc:
         if node is None:
             name2pseudofixturedef = None
         else:
-            default: dict[str, FixtureDef[Any]] = {}
+            default: FixtureDefDict = {}
             name2pseudofixturedef = node.stash.setdefault(
                 name2pseudofixturedef_key, default
             )
