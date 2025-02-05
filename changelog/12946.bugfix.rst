@@ -1,0 +1,1 @@
+Fixed missing help for :mod:`pdb` commands wrapped by pytest -- by :user:`adamchainz`.
