@@ -835,3 +835,37 @@ def test_pytester_outcomes_deselected(pytester: Pytester) -> None:
     result.assert_outcomes(passed=1, deselected=1)
     # If deselected is not passed, it is not checked at all.
     result.assert_outcomes(passed=1)
+
+
+def test_syspathinsert__in_process__path_exists(pytester: Pytester):
+    some_dir = "abcd"
+    pytester.syspathinsert(some_dir)
+    pytester.makepyfile(
+        f"""
+        import sys
+
+        def test_foo():
+            assert "{some_dir}" in sys.path
+        """
+    )
+
+    result = pytester.runpytest_inprocess()
+
+    result.assert_outcomes(passed=1)
+
+
+def test_syspathinsert__sub_process__path_exists(pytester: Pytester):
+    some_dir = "abcd"
+    pytester.syspathinsert(some_dir)
+    pytester.makepyfile(
+        f"""
+        import sys
+
+        def test_foo():
+            assert "{some_dir}" in sys.path
+        """
+    )
+
+    result = pytester.runpytest_subprocess()
+
+    result.assert_outcomes(passed=1)

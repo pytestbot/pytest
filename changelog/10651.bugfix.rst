@@ -1,0 +1,1 @@
+Fixed bug where the `Pytester.syspathinsert` has no effect when using subprocess.
