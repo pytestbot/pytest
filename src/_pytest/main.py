@@ -248,24 +248,42 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def validate_basetemp(path: str) -> str:
-    # GH 7119
+    """
+    Validate that the given base temp directory path is not empty,
+    the current working directory, or any of its parent directories.
+
+    :param path: The directory path to validate.
+    :type path: str
+    :return: The validated directory path.
+    :rtype: str
+    :raises argparse.ArgumentTypeError: If the path is invalid.
+    """
     msg = "basetemp must not be empty, the current working directory or any parent directory of it"
 
-    # empty path
+    # Check if the provided path is empty
     if not path:
         raise argparse.ArgumentTypeError(msg)
 
     def is_ancestor(base: Path, query: Path) -> bool:
-        """Return whether query is an ancestor of base."""
+        """
+        Determine if a query path is an ancestor of the base path.
+
+        :param base: The base path to check.
+        :type base: Path
+        :param query: The query path to compare against.
+        :type query: Path
+        :return: True if the query is an ancestor of the base path, False otherwise.
+        :rtype: bool
+        """
         if base == query:
             return True
         return query in base.parents
 
-    # check if path is an ancestor of cwd
+    # Check if the path is an ancestor of the current working directory
     if is_ancestor(Path.cwd(), Path(path).absolute()):
         raise argparse.ArgumentTypeError(msg)
 
-    # check symlinks for ancestors
+    # Check if the resolved path (following symlinks) is an ancestor
     if is_ancestor(Path.cwd().resolve(), Path(path).resolve()):
         raise argparse.ArgumentTypeError(msg)
 
@@ -275,12 +293,22 @@ def validate_basetemp(path: str) -> str:
 def wrap_session(
     config: Config, doit: Callable[[Config, Session], int | ExitCode | None]
 ) -> int | ExitCode:
-    """Skeleton command line program."""
+    """
+    Execute a session wrapped with proper setup and teardown logic.
+
+    :param config: Configuration object for the session.
+    :type config: Config
+    :param doit: Callable function to execute within the session.
+    :type doit: Callable[[Config, Session], int | ExitCode | None]
+    :return: The session's exit status.
+    :rtype: int | ExitCode
+    """
     session = Session.from_config(config)
     session.exitstatus = ExitCode.OK
     initstate = 0
     try:
         try:
+            # Configure the session
             config._do_configure()
             initstate = 1
             config.hook.pytest_sessionstart(session=session)
@@ -292,6 +320,7 @@ def wrap_session(
         except Failed:
             session.exitstatus = ExitCode.TESTS_FAILED
         except (KeyboardInterrupt, exit.Exception):
+            # Handle interruptions
             excinfo = _pytest._code.ExceptionInfo.from_current()
             exitstatus: int | ExitCode = ExitCode.INTERRUPTED
             if isinstance(excinfo.value, exit.Exception):
@@ -302,6 +331,7 @@ def wrap_session(
             config.hook.pytest_keyboard_interrupt(excinfo=excinfo)
             session.exitstatus = exitstatus
         except BaseException:
+            # Handle unexpected exceptions
             session.exitstatus = ExitCode.INTERNAL_ERROR
             excinfo = _pytest._code.ExceptionInfo.from_current()
             try:
@@ -313,10 +343,9 @@ def wrap_session(
             else:
                 if isinstance(excinfo.value, SystemExit):
                     sys.stderr.write("mainloop: caught unexpected SystemExit!\n")
-
     finally:
-        # Explicitly break reference cycle.
-        excinfo = None  # type: ignore
+        # Cleanup and unconfigure session
+        excinfo = None  # Explicitly break reference cycle
         os.chdir(session.startpath)
         if initstate >= 2:
             try:
@@ -332,15 +361,33 @@ def wrap_session(
 
 
 def pytest_cmdline_main(config: Config) -> int | ExitCode:
+    """
+    Main command-line entry point for pytest.
+
+    :param config: Configuration object.
+    :type config: Config
+    :return: Exit code of the pytest execution.
+    :rtype: int | ExitCode
+    """
     return wrap_session(config, _main)
 
 
 def _main(config: Config, session: Session) -> int | ExitCode | None:
-    """Default command line protocol for initialization, session,
-    running tests and reporting."""
+    """
+    Default pytest protocol for initialization, running tests, and reporting.
+
+    :param config: Configuration object.
+    :type config: Config
+    :param session: Session object for the test run.
+    :type session: Session
+    :return: Exit code based on test outcomes.
+    :rtype: int | ExitCode | None
+    """
+    # Run collection and test loop hooks
     config.hook.pytest_collection(session=session)
     config.hook.pytest_runtestloop(session=session)
 
+    # Return appropriate exit code based on test results
     if session.testsfailed:
         return ExitCode.TESTS_FAILED
     elif session.testscollected == 0:
@@ -349,20 +396,40 @@ def _main(config: Config, session: Session) -> int | ExitCode | None:
 
 
 def pytest_collection(session: Session) -> None:
+    """
+    Perform the collection phase of the pytest session.
+
+    :param session: The pytest session object.
+    :type session: Session
+    """
+    # Trigger the collection process to gather tests.
     session.perform_collect()
 
 
 def pytest_runtestloop(session: Session) -> bool:
+    """
+    Run the collected tests in a loop.
+
+    :param session: The pytest session object containing the collected tests.
+    :type session: Session
+    :return: True if the test loop completes successfully.
+    :rtype: bool
+    :raises session.Interrupted: If an error or stop condition occurs during test execution.
+    """
+    # Check if there were collection errors and if those should stop further testing
     if session.testsfailed and not session.config.option.continue_on_collection_errors:
         raise session.Interrupted(
             f"{session.testsfailed} error{'s' if session.testsfailed != 1 else ''} during collection"
         )
 
+    # If the user only requested collection (no execution), stop here.
     if session.config.option.collectonly:
         return True
 
+    # Iterate through collected tests and execute them
     for i, item in enumerate(session.items):
         nextitem = session.items[i + 1] if i + 1 < len(session.items) else None
+        # Call the test protocol hook for each test item
         item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
         if session.shouldfail:
             raise session.Failed(session.shouldfail)
@@ -393,9 +460,22 @@ def _in_venv(path: Path) -> bool:
 
 
 def pytest_ignore_collect(collection_path: Path, config: Config) -> bool | None:
+    """
+    Determine if a given path should be ignored during test collection.
+
+    This function checks for ignored paths, globs, and virtual environment roots.
+
+    :param collection_path: Path to the file or directory being checked.
+    :type collection_path: Path
+    :param config: The pytest configuration object.
+    :type config: Config
+    :return: True if the path should be ignored, None otherwise.
+    :rtype: bool | None
+    """
     if collection_path.name == "__pycache__":
         return True
 
+    # Check for paths explicitly marked as ignored
     ignore_paths = config._getconftest_pathlist(
         "collect_ignore", path=collection_path.parent
     )
@@ -406,7 +486,7 @@ def pytest_ignore_collect(collection_path: Path, config: Config) -> bool | None:
 
     if collection_path in ignore_paths:
         return True
-
+    # Check for ignored paths using glob patterns
     ignore_globs = config._getconftest_pathlist(
         "collect_ignore_glob", path=collection_path.parent
     )
@@ -417,11 +497,11 @@ def pytest_ignore_collect(collection_path: Path, config: Config) -> bool | None:
 
     if any(fnmatch.fnmatch(str(collection_path), str(glob)) for glob in ignore_globs):
         return True
-
+    # Ignore virtual environment roots unless explicitly allowed
     allow_in_venv = config.getoption("collect_in_virtualenv")
     if not allow_in_venv and _in_venv(collection_path):
         return True
-
+    # Check if the directory matches patterns for non-recursion
     if collection_path.is_dir():
         norecursepatterns = config.getini("norecursedirs")
         if any(fnmatch_ex(pat, collection_path) for pat in norecursepatterns):
@@ -433,22 +513,44 @@ def pytest_ignore_collect(collection_path: Path, config: Config) -> bool | None:
 def pytest_collect_directory(
     path: Path, parent: nodes.Collector
 ) -> nodes.Collector | None:
+    """
+    Create a collector node for a directory during test collection.
+
+    :param path: The directory path being collected.
+    :type path: Path
+    :param parent: The parent collector node.
+    :type parent: nodes.Collector
+    :return: A collector node for the directory.
+    :rtype: nodes.Collector | None
+    """
+    # Create a directory collector node from the parent
     return Dir.from_parent(parent, path=path)
 
 
 def pytest_collection_modifyitems(items: list[nodes.Item], config: Config) -> None:
+    """
+    Modify the list of collected items, deselecting items based on prefixes.
+
+    :param items: List of collected test items.
+    :type items: list[nodes.Item]
+    :param config: The pytest configuration object.
+    :type config: Config
+    """
+    # Get deselection prefixes from configuration
     deselect_prefixes = tuple(config.getoption("deselect") or [])
     if not deselect_prefixes:
         return
 
     remaining = []
     deselected = []
+    # Separate items into deselected and remaining based on prefixes
     for colitem in items:
         if colitem.nodeid.startswith(deselect_prefixes):
             deselected.append(colitem)
         else:
             remaining.append(colitem)
 
+    # Notify about deselected items and update the remaining items list
     if deselected:
         config.hook.pytest_deselected(items=deselected)
         items[:] = remaining
