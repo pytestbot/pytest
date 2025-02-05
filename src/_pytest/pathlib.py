@@ -536,7 +536,7 @@ def import_path(
         # Try to import this module using the standard import mechanisms, but
         # without touching sys.path.
         try:
-            pkg_root, module_name = resolve_pkg_root_and_module_name(
+            _, module_name = resolve_pkg_root_and_module_name(
                 path, consider_namespace_packages=consider_namespace_packages
             )
         except CouldNotResolvePathError:
@@ -547,7 +547,7 @@ def import_path(
                 return sys.modules[module_name]
 
             mod = _import_module_using_spec(
-                module_name, path, pkg_root, insert_modules=False
+                module_name, path, path.parent, insert_modules=False
             )
             if mod is not None:
                 return mod
