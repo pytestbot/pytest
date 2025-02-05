@@ -475,8 +475,21 @@ class ApproxScalar(ApproxBase):
         if math.isinf(abs(self.expected)):
             return False
 
-        # Return true if the two numbers are within the tolerance.
-        result: bool = abs(self.expected - actual) <= self.tolerance
+        # Return true if the two numbers are within the tolerance.  In order to
+        # be flexible about which types are supported, try making the
+        # comparison in two ways.  The first requires that the actual value can
+        # be subtracted from the expected value.  This is necessary for complex
+        # numbers, which don't implement comparison operators.  The second
+        # requires that the actual and expected values can be compared.  This
+        # is necessary for comparing Decimals with floats, see #8495.
+        result: bool
+        try:
+            result = abs(self.expected - actual) <= self.tolerance
+        except TypeError:
+            low = self.expected - self.tolerance
+            high = self.expected + self.tolerance
+            result = low <= actual <= high
+
         return result
 
     # Ignore type because of https://github.com/python/mypy/issues/4266.
