@@ -649,6 +649,13 @@ def _init_checker_class() -> type[doctest.OutputChecker]:
             if allow_number:
                 got = self._remove_unwanted_precision(want, got)
 
+            if "..." in want:
+                want_regex = re.escape(want).replace(r"\.\.\.", ".*")
+                print(f"Transformed WANT: {want_regex}")  # Debugging output
+                print(f"GOT: {got}")  # Debugging output
+                if re.fullmatch(want_regex, got, re.DOTALL):
+                    return True
+
             return super().check_output(want, got, optionflags)
 
         def _remove_unwanted_precision(self, want: str, got: str) -> str:

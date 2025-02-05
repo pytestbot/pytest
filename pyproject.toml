@@ -421,7 +421,9 @@ markers = [
     "slow",
     # experimental mark for all tests using pexpect
     "uses_pexpect",
+    "doctest: mark tests related to doctests",
 ]
+doctest_optionflags = [ "ELLIPSIS" ]
 
 [tool.towncrier]
 package = "pytest"

@@ -1,0 +1,1 @@
+Fix handling of ellipsis (...) in traceback comparisons for doctests

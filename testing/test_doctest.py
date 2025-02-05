@@ -1642,3 +1642,28 @@ def test_is_setup_py_different_encoding(tmp_path: Path, mod: str) -> None:
 def test_is_main_py(tmp_path: Path, name: str, expected: bool) -> None:
     dunder_main = tmp_path.joinpath(name)
     assert _is_main_py(dunder_main) == expected
+
+
+def test_doctest_wildcard(pytester):
+    """
+    Test that doctests with wildcards in tracebacks are handled correctly.
+    """
+    # Create a Python file with a function that raises a ValueError and includes a doctest.
+    pytester.makepyfile(
+        """
+        def _test_doctest_wildcard():
+            '''
+            >>> _test_doctest_wildcard()
+            Traceback (most recent call last):
+                ...
+            ValueError: An error occurred
+            '''
+            raise ValueError("An error occurred")
+        """
+    )
+
+    # Run pytest with doctest support enabled.
+    result = pytester.runpytest("--doctest-modules")
+
+    # Check that the test passed without failures.
+    result.assert_outcomes(passed=1, failed=0)
