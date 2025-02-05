@@ -599,7 +599,9 @@ def pytest_generate_tests(metafunc: Metafunc) -> None:
 
 
 @hookspec(firstresult=True)
-def pytest_make_parametrize_id(config: Config, val: object, argname: str) -> str | None:
+def pytest_make_parametrize_id(
+    config: Config, val: object, argname: str, idx: int
+) -> str | None:
     """Return a user-friendly string representation of the given ``val``
     that will be used by @pytest.mark.parametrize calls, or None if the hook
     doesn't know about ``val``.
@@ -611,6 +613,7 @@ def pytest_make_parametrize_id(config: Config, val: object, argname: str) -> str
     :param config: The pytest config object.
     :param val: The parametrized value.
     :param argname: The automatic parameter name produced by pytest.
+    :param idx: The iteration number of parameterized tests as calculated by pytest.
 
     Use in conftest plugins
     =======================

@@ -870,7 +870,7 @@ class IdMaker:
     parametersets: Sequence[ParameterSet]
     # Optionally, a user-provided callable to make IDs for parameters in a
     # ParameterSet.
-    idfn: Callable[[Any], object | None] | None
+    idfn: Callable[[Any, str, int], object | None] | None
     # Optionally, explicit IDs for ParameterSets by index.
     ids: Sequence[object | None] | None
     # Optionally, the pytest config.
@@ -940,7 +940,7 @@ class IdMaker:
         idval = self._idval_from_function(val, argname, idx)
         if idval is not None:
             return idval
-        idval = self._idval_from_hook(val, argname)
+        idval = self._idval_from_hook(val, argname, idx)
         if idval is not None:
             return idval
         idval = self._idval_from_value(val)
@@ -954,7 +954,7 @@ class IdMaker:
         if self.idfn is None:
             return None
         try:
-            id = self.idfn(val)
+            id = self.idfn(val, argname, idx)
         except Exception as e:
             prefix = f"{self.nodeid}: " if self.nodeid is not None else ""
             msg = "error raised while trying to determine id of parameter '{}' at position {}"
@@ -964,12 +964,12 @@ class IdMaker:
             return None
         return self._idval_from_value(id)
 
-    def _idval_from_hook(self, val: object, argname: str) -> str | None:
+    def _idval_from_hook(self, val: object, argname: str, idx: int) -> str | None:
         """Try to make an ID for a parameter in a ParameterSet by calling the
         :hook:`pytest_make_parametrize_id` hook."""
         if self.config:
             id: str | None = self.config.hook.pytest_make_parametrize_id(
-                config=self.config, val=val, argname=argname
+                config=self.config, val=val, argname=argname, idx=idx
             )
             return id
         return None
@@ -1139,7 +1139,9 @@ class Metafunc:
         argnames: str | Sequence[str],
         argvalues: Iterable[ParameterSet | Sequence[object] | object],
         indirect: bool | Sequence[str] = False,
-        ids: Iterable[object | None] | Callable[[Any], object | None] | None = None,
+        ids: Iterable[object | None]
+        | Callable[[Any, str, int], object | None]
+        | None = None,
         scope: _ScopeName | None = None,
         *,
         _param_mark: Mark | None = None,
@@ -1319,7 +1321,7 @@ class Metafunc:
     def _resolve_parameter_set_ids(
         self,
         argnames: Sequence[str],
-        ids: Iterable[object | None] | Callable[[Any], object | None] | None,
+        ids: Iterable[object | None] | Callable[[Any, str, int], object | None] | None,
         parametersets: Sequence[ParameterSet],
         nodeid: str,
     ) -> list[str]:

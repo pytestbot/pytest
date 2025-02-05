@@ -1,0 +1,3 @@
+Existing parameters (argname and case index) are passed to hook and idfn for parameterized test ID creation.
+
+-- by :user:`nicoloborghi`

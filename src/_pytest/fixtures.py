@@ -962,7 +962,9 @@ class FixtureDef(Generic[FixtureValue]):
         func: _FixtureFunc[FixtureValue],
         scope: Scope | _ScopeName | Callable[[str, Config], _ScopeName] | None,
         params: Sequence[object] | None,
-        ids: tuple[object | None, ...] | Callable[[Any], object | None] | None = None,
+        ids: tuple[object | None, ...]
+        | Callable[[Any, str, int], object | None]
+        | None = None,
         *,
         _ispytest: bool = False,
         # only used in a deprecationwarning msg, can be removed in pytest9
@@ -1186,7 +1188,9 @@ class FixtureFunctionMarker:
     scope: _ScopeName | Callable[[str, Config], _ScopeName]
     params: tuple[object, ...] | None
     autouse: bool = False
-    ids: tuple[object | None, ...] | Callable[[Any], object | None] | None = None
+    ids: tuple[object | None, ...] | Callable[[Any, str, int], object | None] | None = (
+        None
+    )
     name: str | None = None
 
     _ispytest: dataclasses.InitVar[bool] = False
@@ -1277,7 +1281,9 @@ def fixture(
     scope: _ScopeName | Callable[[str, Config], _ScopeName] = ...,
     params: Iterable[object] | None = ...,
     autouse: bool = ...,
-    ids: Sequence[object | None] | Callable[[Any], object | None] | None = ...,
+    ids: Sequence[object | None]
+    | Callable[[Any, str, int], object | None]
+    | None = ...,
     name: str | None = ...,
 ) -> FixtureFunctionDefinition: ...
 
@@ -1289,7 +1295,9 @@ def fixture(
     scope: _ScopeName | Callable[[str, Config], _ScopeName] = ...,
     params: Iterable[object] | None = ...,
     autouse: bool = ...,
-    ids: Sequence[object | None] | Callable[[Any], object | None] | None = ...,
+    ids: Sequence[object | None]
+    | Callable[[Any, str, int], object | None]
+    | None = ...,
     name: str | None = None,
 ) -> FixtureFunctionMarker: ...
 
@@ -1300,7 +1308,9 @@ def fixture(
     scope: _ScopeName | Callable[[str, Config], _ScopeName] = "function",
     params: Iterable[object] | None = None,
     autouse: bool = False,
-    ids: Sequence[object | None] | Callable[[Any], object | None] | None = None,
+    ids: Sequence[object | None]
+    | Callable[[Any, str, int], object | None]
+    | None = None,
     name: str | None = None,
 ) -> FixtureFunctionMarker | FixtureFunctionDefinition:
     """Decorator to mark a fixture factory function.
@@ -1694,7 +1704,9 @@ class FixtureManager:
         nodeid: str | None,
         scope: Scope | _ScopeName | Callable[[str, Config], _ScopeName] = "function",
         params: Sequence[object] | None = None,
-        ids: tuple[object | None, ...] | Callable[[Any], object | None] | None = None,
+        ids: tuple[object | None, ...]
+        | Callable[[Any, str, int], object | None]
+        | None = None,
         autouse: bool = False,
     ) -> None:
         """Register a fixture

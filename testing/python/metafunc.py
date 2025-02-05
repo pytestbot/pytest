@@ -513,7 +513,7 @@ class TestMetafunc:
     def test_idmaker_idfn(self) -> None:
         """#351"""
 
-        def ids(val: object) -> str | None:
+        def ids(val: object, argname: str, idx: int) -> str | None:
             if isinstance(val, Exception):
                 return repr(val)
             return None
@@ -536,7 +536,7 @@ class TestMetafunc:
     def test_idmaker_idfn_unique_names(self) -> None:
         """#351"""
 
-        def ids(val: object) -> str:
+        def ids(val: object, argname: str, idx: int) -> str:
             return "a"
 
         result = IdMaker(
@@ -584,7 +584,7 @@ class TestMetafunc:
             result = IdMaker(
                 ("a",),
                 [pytest.param("string")],
-                lambda _: "ação",
+                lambda _, __, ___: "ação",
                 None,
                 config,
                 None,
