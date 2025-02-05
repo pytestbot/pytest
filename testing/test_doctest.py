@@ -1366,7 +1366,7 @@ class TestDoctestAutoUseFixtures:
         result.stdout.no_fnmatch_line("*FAILURES*")
         result.stdout.fnmatch_lines(["*=== 1 passed in *"])
 
-    @pytest.mark.parametrize("scope", SCOPES)
+    @pytest.mark.parametrize("scope", [*SCOPES, "package"])
     def test_auto_use_request_attributes(self, pytester, scope):
         """Check that all attributes of a request in an autouse fixture
         behave as expected when requested for a doctest item.
@@ -1377,6 +1377,8 @@ class TestDoctestAutoUseFixtures:
 
             @pytest.fixture(autouse=True, scope="{scope}")
             def auto(request):
+                if "{scope}" == 'package':
+                    assert request.package is None
                 if "{scope}" == 'module':
                     assert request.module is None
                 if "{scope}" == 'class':

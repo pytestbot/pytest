@@ -461,6 +461,17 @@ class FixtureRequest(abc.ABC):
         return mod.obj
 
     @property
+    def package(self):
+        """Python package object where the test function was collected."""
+        if self.scope not in ("function", "class", "module", "package"):
+            raise AttributeError(
+                f"package not available in {self.scope}-scoped context"
+            )
+        pkg = self._pyfuncitem.getparent(_pytest.python.Package)
+        assert pkg is not None
+        return pkg.obj
+
+    @property
     def path(self) -> Path:
         """Path where the test function was collected."""
         if self.scope not in ("function", "class", "module", "package"):
