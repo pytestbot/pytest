@@ -32,6 +32,10 @@ Built-in fixtures
    :fixture:`capsys`
         Capture, as text, output to ``sys.stdout`` and ``sys.stderr``.
 
+   :fixture:`capteesys`
+        Capture in the same manner as :fixture:`capsys`, but also pass text
+        through according to ``--capture=``.
+
    :fixture:`capsysbinary`
         Capture, as bytes, output to ``sys.stdout`` and ``sys.stderr``.
 

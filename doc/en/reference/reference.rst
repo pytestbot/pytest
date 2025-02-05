@@ -402,6 +402,16 @@ capsys
 .. autoclass:: pytest.CaptureFixture()
     :members:
 
+.. fixture:: capteesys
+
+capteesys
+~~~~~~~~~
+
+**Tutorial**: :ref:`captures`
+
+.. autofunction:: _pytest.capture.capteesys()
+    :no-auto-options:
+
 .. fixture:: capsysbinary
 
 capsysbinary

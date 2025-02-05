@@ -1,0 +1,1 @@
+Added :fixture:`capteesys` to capture AND pass output to next handler set by ``--capture=``.

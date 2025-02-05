@@ -922,11 +922,13 @@ class CaptureFixture(Generic[AnyStr]):
         captureclass: type[CaptureBase[AnyStr]],
         request: SubRequest,
         *,
+        config: dict[str, Any] | None = None,
         _ispytest: bool = False,
     ) -> None:
         check_ispytest(_ispytest)
         self.captureclass: type[CaptureBase[AnyStr]] = captureclass
         self.request = request
+        self._config = config if config else {}
         self._capture: MultiCapture[AnyStr] | None = None
         self._captured_out: AnyStr = self.captureclass.EMPTY_BUFFER
         self._captured_err: AnyStr = self.captureclass.EMPTY_BUFFER
@@ -935,8 +937,8 @@ class CaptureFixture(Generic[AnyStr]):
         if self._capture is None:
             self._capture = MultiCapture(
                 in_=None,
-                out=self.captureclass(1),
-                err=self.captureclass(2),
+                out=self.captureclass(1, **self._config),
+                err=self.captureclass(2, **self._config),
             )
             self._capture.start_capturing()
 
@@ -1015,6 +1017,41 @@ def capsys(request: SubRequest) -> Generator[CaptureFixture[str]]:
     """
     capman: CaptureManager = request.config.pluginmanager.getplugin("capturemanager")
     capture_fixture = CaptureFixture(SysCapture, request, _ispytest=True)
+    capman.set_fixture(capture_fixture)
+    capture_fixture._start()
+    yield capture_fixture
+    capture_fixture.close()
+    capman.unset_fixture()
+
+
+@fixture
+def capteesys(request: SubRequest) -> Generator[CaptureFixture[str]]:
+    r"""Enable simultaneous text capturing and pass-through of writes
+    to ``sys.stdout`` and ``sys.stderr`` as defined by ``--capture=``.
+
+
+    The captured output is made available via ``capteesys.readouterr()`` method
+    calls, which return a ``(out, err)`` namedtuple.
+    ``out`` and ``err`` will be ``text`` objects.
+
+    The output is also passed-through, allowing it to be "live-printed",
+    reported, or both as defined by ``--capture=``.
+
+    Returns an instance of :class:`CaptureFixture[str] <pytest.CaptureFixture>`.
+
+    Example:
+
+    .. code-block:: python
+
+        def test_output(capsys):
+            print("hello")
+            captured = capteesys.readouterr()
+            assert captured.out == "hello\n"
+    """
+    capman: CaptureManager = request.config.pluginmanager.getplugin("capturemanager")
+    capture_fixture = CaptureFixture(
+        SysCapture, request, config=dict(tee=True), _ispytest=True
+    )
     capman.set_fixture(capture_fixture)
     capture_fixture._start()
     yield capture_fixture
