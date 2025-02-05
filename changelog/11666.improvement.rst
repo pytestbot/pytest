@@ -1,0 +1,7 @@
+Improved the terminal writer to be able to use pygments Terminal256Formatter and TerminalTrueColorFormatter.
+
+These can be set by the user with the environmental variable PYTEST_THEME.
+
+There is also a default format set with both a light and dark mode which can be changed with the environmental variable PYTEST_THEME_MODE.
+
+If no environmental variables are set it defaults to dark mode.
