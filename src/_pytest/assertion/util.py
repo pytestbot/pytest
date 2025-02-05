@@ -309,10 +309,22 @@ def _diff_text(left: str, right: str, verbose: int = 0) -> list[str]:
                 left = left[:-i]
                 right = right[:-i]
     keepends = True
+    diffspace = False
+    for i in range(min(len(left), len(right))):
+        if left[i] != right[i]:
+            if left[i].isspace() and right[i].isspace():
+                diffspace = True  # Check if difference in strings is whitespace symbol
+                break
     if left.isspace() or right.isspace():
         left = repr(str(left))
         right = repr(str(right))
         explanation += ["Strings contain only whitespace, escaping them using repr()"]
+    elif diffspace:
+        left = repr(str(left))
+        right = repr(str(right))
+        explanation += [
+            "Strings are different by whitespaces, escaping them using repr()"
+        ]
     # "right" is the expected base against which we compare "left",
     # see https://github.com/pytest-dev/pytest/issues/3333
     explanation += [

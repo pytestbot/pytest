@@ -284,6 +284,20 @@ TESTCASES = [
         """,
         id="Compare attrs classes",
     ),
+    pytest.param(
+        """
+        def test_this():
+            assert "word\t" == "word    "
+        """,
+        """
+        >       assert "word\t" == "word    "
+        E       AssertionError: assert 'word\\t' == 'word    '
+        E         Strings are different by whitespaces, escaping them using repr()
+        E         - 'word    '
+        E         + 'word\\t'
+        """,
+        id="Compare whitespaces",
+    ),
 ]
 
 

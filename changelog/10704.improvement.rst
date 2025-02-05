@@ -1,0 +1,1 @@
+Terminal outputting string difference will now escape whitespace characters if those are the difference
