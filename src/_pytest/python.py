@@ -1301,10 +1301,11 @@ class Metafunc:
         # more than once) then we accumulate those calls generating the cartesian product
         # of all calls.
         newcalls = []
-        for callspec in self._calls or [CallSpec2()]:
+        for callspec_index, callspec in enumerate(self._calls or [CallSpec2()]):
             for param_index, (param_id, param_set) in enumerate(
                 zip(ids, parametersets)
             ):
+                param_index = callspec_index * len(parametersets) + param_index
                 newcallspec = callspec.setmulti(
                     argnames=argnames,
                     valset=param_set.values,

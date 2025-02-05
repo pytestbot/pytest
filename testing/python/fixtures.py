@@ -2835,12 +2835,12 @@ class TestFixtureMarker:
             test_mod2.py::test_func2[s2] PASSED
             test_mod2.py::test_func3[s2-m1] PASSED
             test_mod2.py::test_func3b[s2-m1] PASSED
-            test_mod2.py::test_func4[m1] PASSED
             test_mod2.py::test_func3[s2-m2] PASSED
             test_mod2.py::test_func3b[s2-m2] PASSED
-            test_mod2.py::test_func4[m2] PASSED
             test_mod1.py::test_func1[m1] PASSED
             test_mod1.py::test_func1[m2] PASSED
+            test_mod2.py::test_func4[m1] PASSED
+            test_mod2.py::test_func4[m2] PASSED
         """
         )
 
@@ -2886,10 +2886,10 @@ class TestFixtureMarker:
             test_dynamic_parametrized_ordering.py::test2[flavor1-vxlan] PASSED
             test_dynamic_parametrized_ordering.py::test[flavor1-vlan] PASSED
             test_dynamic_parametrized_ordering.py::test2[flavor1-vlan] PASSED
-            test_dynamic_parametrized_ordering.py::test[flavor2-vlan] PASSED
-            test_dynamic_parametrized_ordering.py::test2[flavor2-vlan] PASSED
             test_dynamic_parametrized_ordering.py::test[flavor2-vxlan] PASSED
             test_dynamic_parametrized_ordering.py::test2[flavor2-vxlan] PASSED
+            test_dynamic_parametrized_ordering.py::test[flavor2-vlan] PASSED
+            test_dynamic_parametrized_ordering.py::test2[flavor2-vlan] PASSED
         """
         )
 

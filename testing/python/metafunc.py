@@ -1047,6 +1047,39 @@ class TestMetafunc:
             ]
         )
 
+    def test_multi_parametrize_reordering(self, pytester: Pytester) -> None:
+        pytester.makepyfile(
+            """
+            import pytest
+
+            @pytest.mark.parametrize("arg2", ['a', 'b', 'c'], scope='class')
+            @pytest.mark.parametrize("arg1", [1, 2], scope='class')
+            class TestClass:
+                def test1(self, arg1, arg2):
+                    pass
+
+                def test2(self, arg1, arg2):
+                    pass
+        """
+        )
+        result = pytester.runpytest("--collect-only")
+        result.stdout.re_match_lines(
+            [
+                r"      <Function test1\[1-a\]>",
+                r"      <Function test2\[1-a\]>",
+                r"      <Function test1\[1-b\]>",
+                r"      <Function test2\[1-b\]>",
+                r"      <Function test1\[1-c\]>",
+                r"      <Function test2\[1-c\]>",
+                r"      <Function test1\[2-a\]>",
+                r"      <Function test2\[2-a\]>",
+                r"      <Function test1\[2-b\]>",
+                r"      <Function test2\[2-b\]>",
+                r"      <Function test1\[2-c\]>",
+                r"      <Function test2\[2-c\]>",
+            ]
+        )
+
     def test_parametrize_multiple_times(self, pytester: Pytester) -> None:
         pytester.makepyfile(
             """
