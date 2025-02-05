@@ -1,0 +1,5 @@
+Plugins specified in the :globalvar:`pytest_plugins` config setting and
+:envvar:`PYTEST_PLUGINS` environment variable now allow using
+:ref:`entry points <pip-installable plugins>` names additionally to the
+importable definitions. Prior to this release, these identifiers used to only
+work with the ``-p`` CLI option -- by :user:`mtelka` and :user:`webknjaz`.

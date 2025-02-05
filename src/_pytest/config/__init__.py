@@ -826,7 +826,7 @@ class PytestPluginManager(PluginManager):
     ) -> None:
         plugins = _get_plugin_specs_as_list(spec)
         for import_spec in plugins:
-            self.import_plugin(import_spec)
+            self.import_plugin(import_spec, consider_entry_points=True)
 
     def import_plugin(self, modname: str, consider_entry_points: bool = False) -> None:
         """Import a plugin with ``modname``.
