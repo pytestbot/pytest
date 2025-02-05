@@ -354,7 +354,7 @@ def _compare_eq_iterable(
 def _compare_eq_sequence(
     left: Sequence[Any],
     right: Sequence[Any],
-    highlighter: _HighlightFunc,
+    highlighter: _HighlightFunc | Callable[[str], str],
     verbose: int = 0,
 ) -> list[str]:
     comparing_bytes = isinstance(left, bytes) and isinstance(right, bytes)
@@ -500,10 +500,19 @@ def _compare_eq_dict(
     if diff:
         explanation += ["Differing items:"]
         for k in diff:
+            left_val = left[k]
+            right_val = right[k]
+            if issequence(left_val) and issequence(right_val):
+                expl = _compare_eq_sequence(
+                    left_val, right_val, lambda item: item, verbose
+                )
+                explanation += [highlighter(saferepr({k: "".join(expl)}))]
+                continue
+
             explanation += [
-                highlighter(saferepr({k: left[k]}))
+                highlighter(saferepr({k: left_val}))
                 + " != "
-                + highlighter(saferepr({k: right[k]}))
+                + highlighter(saferepr({k: right_val}))
             ]
     extra_left = set_left - set_right
     len_extra_left = len(extra_left)
