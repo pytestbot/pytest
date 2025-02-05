@@ -1600,3 +1600,53 @@ def test_no_terminal_plugin(pytester: Pytester) -> None:
     pytester.makepyfile("def test(): assert 1 == 2")
     result = pytester.runpytest("-pno:terminal", "-s")
     assert result.ret == ExitCode.TESTS_FAILED
+
+
+def test_stop_iteration_from_collect(pytester: Pytester) -> None:
+    pytester.makepyfile(test_it="raise StopIteration('hello')")
+    result = pytester.runpytest()
+    assert result.ret == ExitCode.INTERRUPTED
+    result.assert_outcomes(failed=0, passed=0, errors=1)
+    result.stdout.fnmatch_lines(
+        [
+            "=========================== short test summary info ============================",
+            "ERROR test_it.py - StopIteration: hello",
+            "!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!",
+            "=============================== 1 error in * ===============================",
+        ]
+    )
+
+
+def test_stop_iteration_runtest_protocol(pytester: Pytester) -> None:
+    pytester.makepyfile(
+        test_it="""
+        import pytest
+
+        @pytest.fixture
+        def fail_setup():
+            raise StopIteration(1)
+
+        def test_fail_setup(fail_setup):
+            pass
+
+        def test_fail_teardown(request):
+            def stop_iteration():
+                raise StopIteration(2)
+            request.addfinalizer(stop_iteration)
+
+        def test_fail_call():
+            raise StopIteration(3)
+        """
+    )
+    result = pytester.runpytest()
+    assert result.ret == ExitCode.TESTS_FAILED
+    result.assert_outcomes(failed=1, passed=1, errors=2)
+    result.stdout.fnmatch_lines(
+        [
+            "=========================== short test summary info ============================",
+            "FAILED test_it.py::test_fail_call - StopIteration: 3",
+            "ERROR test_it.py::test_fail_setup - StopIteration: 1",
+            "ERROR test_it.py::test_fail_teardown - StopIteration: 2",
+            "==================== 1 failed, 1 passed, 2 errors in * =====================",
+        ]
+    )
