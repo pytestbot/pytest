@@ -1,0 +1,1 @@
+Fixes issue where nested data structures of different types did not raise an error with ``approx``.

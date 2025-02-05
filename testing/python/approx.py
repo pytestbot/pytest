@@ -899,6 +899,9 @@ class TestApprox:
         "x, name",
         [
             pytest.param([[1]], "data structures", id="nested-list"),
+            pytest.param([(1,)], "data structures", id="nested-list-tuple"),
+            pytest.param([{1}], "data structures", id="nested-list-set"),
+            pytest.param([{"key": 1}], "data structures", id="nested-list-dict"),
             pytest.param({"key": {"key": 1}}, "dictionaries", id="nested-dict"),
         ],
     )
