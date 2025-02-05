@@ -248,24 +248,37 @@ def pytest_addoption(parser: Parser) -> None:
 
 
 def validate_basetemp(path: str) -> str:
-    # GH 7119
+    """
+    Validate the base temporary directory path.
+
+    Args:
+        path (str): The path to validate.
+
+    Returns:
+        str: The validated path.
+
+    Raises:
+        argparse.ArgumentTypeError: If the path is invalid, such as being empty, the
+        current working directory, or a parent directory of the current working directory.
+    """
+    # Error message for invalid paths
     msg = "basetemp must not be empty, the current working directory or any parent directory of it"
 
-    # empty path
+    # Check for an empty path
     if not path:
         raise argparse.ArgumentTypeError(msg)
 
     def is_ancestor(base: Path, query: Path) -> bool:
-        """Return whether query is an ancestor of base."""
+        """Check if the query path is an ancestor of the base path."""
         if base == query:
             return True
         return query in base.parents
 
-    # check if path is an ancestor of cwd
+    # Ensure the path is not an ancestor of the current working directory
     if is_ancestor(Path.cwd(), Path(path).absolute()):
         raise argparse.ArgumentTypeError(msg)
 
-    # check symlinks for ancestors
+    # Check symlinks for ancestral relationships
     if is_ancestor(Path.cwd().resolve(), Path(path).resolve()):
         raise argparse.ArgumentTypeError(msg)
 
@@ -275,17 +288,26 @@ def validate_basetemp(path: str) -> str:
 def wrap_session(
     config: Config, doit: Callable[[Config, Session], int | ExitCode | None]
 ) -> int | ExitCode:
-    """Skeleton command line program."""
+    """
+    Execute the pytest session within a controlled wrapper.
+
+    Args:
+        config (Config): The pytest configuration object.
+        doit (Callable): Function defining the session execution logic.
+
+    Returns:
+        int | ExitCode: The exit status of the session.
+    """
     session = Session.from_config(config)
     session.exitstatus = ExitCode.OK
     initstate = 0
     try:
         try:
-            config._do_configure()
+            config._do_configure()  # Initialize pytest configuration
             initstate = 1
-            config.hook.pytest_sessionstart(session=session)
+            config.hook.pytest_sessionstart(session=session)  # Notify start of session
             initstate = 2
-            session.exitstatus = doit(config, session) or 0
+            session.exitstatus = doit(config, session) or 0  # Execute main logic
         except UsageError:
             session.exitstatus = ExitCode.USAGE_ERROR
             raise
@@ -313,11 +335,10 @@ def wrap_session(
             else:
                 if isinstance(excinfo.value, SystemExit):
                     sys.stderr.write("mainloop: caught unexpected SystemExit!\n")
-
     finally:
-        # Explicitly break reference cycle.
+        # Explicitly break reference cycles
         excinfo = None  # type: ignore
-        os.chdir(session.startpath)
+        os.chdir(session.startpath)  # Return to the initial directory
         if initstate >= 2:
             try:
                 config.hook.pytest_sessionfinish(
@@ -332,12 +353,30 @@ def wrap_session(
 
 
 def pytest_cmdline_main(config: Config) -> int | ExitCode:
+    """
+    The main entry point for pytest command-line execution.
+
+    Args:
+        config (Config): The pytest configuration object.
+
+    Returns:
+        int | ExitCode: The exit status of the pytest session.
+    """
     return wrap_session(config, _main)
 
 
 def _main(config: Config, session: Session) -> int | ExitCode | None:
-    """Default command line protocol for initialization, session,
-    running tests and reporting."""
+    """
+    Default command line protocol for initialization, session,
+    running tests, and reporting.
+
+    Args:
+        config (Config): The pytest configuration object.
+        session (Session): The pytest session object.
+
+    Returns:
+        int | ExitCode | None: The exit status of the session or None.
+    """
     config.hook.pytest_collection(session=session)
     config.hook.pytest_runtestloop(session=session)
 
@@ -349,10 +388,29 @@ def _main(config: Config, session: Session) -> int | ExitCode | None:
 
 
 def pytest_collection(session: Session) -> None:
+    """
+    Perform the test collection phase for the given pytest session.
+
+    Args:
+        session (Session): The pytest session object.
+    """
     session.perform_collect()
 
 
 def pytest_runtestloop(session: Session) -> bool:
+    """
+    Execute the test run loop for the given pytest session.
+
+    Args:
+        session (Session): The pytest session object.
+
+    Returns:
+        bool: True if the loop completes successfully, False otherwise.
+
+    Raises:
+        session.Interrupted: If the test session is interrupted.
+        session.Failed: If the session encounters a failure condition.
+    """
     if session.testsfailed and not session.config.option.continue_on_collection_errors:
         raise session.Interrupted(
             f"{session.testsfailed} error{'s' if session.testsfailed != 1 else ''} during collection"

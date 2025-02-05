@@ -1,0 +1,2 @@
+* Added Sphinx-compatible docstrings and inline comments for functions in
+  `pytest/src/_pytest/main.py` (lines 245-490).
